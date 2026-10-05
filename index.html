@@ -55,13 +55,11 @@
 </ol>
 
 <main>
+  <div class="scrim" aria-hidden="true"></div>
+
   <section class="hero" id="acasa" aria-labelledby="hero-t">
     <div class="hero__copy">
-      <p class="netchip" data-netchip>
-        <span class="ping" aria-hidden="true"></span>
-        <span data-netchip-text>Caut telefoane în apropiere</span>
-      </p>
-      <h1 id="hero-t" class="hero__title"><span>Mesaje</span> <span>fără semnal.</span></h1>
+      <h1 id="hero-t" class="hero__title">Mesaje <span>fără semnal.</span></h1>
       <p class="lead">Scrii prietenilor și chemi ajutor chiar când rețeaua cade. Mesajele sar din telefon în telefon, prin Bluetooth.</p>
       <div class="cta">
         <a class="btn btn--big" href="#descarca" data-download-link>
@@ -70,51 +68,55 @@
         </a>
         <a class="link" href="#cade">Vezi cum merge <svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
       </div>
-      <ul class="facts" aria-label="Pe scurt">
-        <li>Gratuit</li>
-        <li>Fără internet</li>
-        <li>Fără cont</li>
-        <li>Android {{MIN_ANDROID}} sau mai nou</li>
-      </ul>
+      <p class="facts">Gratuit, fără cont. Merge pe Android {{MIN_ANDROID}} sau mai nou.</p>
     </div>
   </section>
 
-  <section class="chapter" id="cade" style="--len: 230" aria-labelledby="cade-t">
+  <section class="chapter chapter--phone" id="cade" style="--len: 200" aria-labelledby="cade-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="cade-t">La festival, rețeaua cade prima.</h2>
-        <p>Zeci de mii de telefoane se înghesuie pe aceleași câteva antene. Mesajele rămân la „Se trimite”, apelurile nu mai intră. Și exact atunci îți pierzi prietenii sau cineva are nevoie de ajutor.</p>
+        <p>Zeci de mii de telefoane se înghesuie pe aceleași câteva antene. Mesajele rămân la „Se trimite”, apelurile nu mai intră. Tocmai atunci îți pierzi prietenii sau cineva are nevoie de ajutor.</p>
+        <p class="net" data-net aria-hidden="true"><span class="bars" data-bars><i></i><i></i><i></i><i></i></span><b data-net-label>4G</b><span data-net-state>SMS-ul către Ana se trimite…</span></p>
       </div>
-      <figure class="signal" aria-label="Telefonul fără semnal: mesajul nu a putut fi trimis">
-        <div class="signal__bar">
-          <span>21:47</span>
-          <span class="signal__carrier" data-carrier>4G</span>
-          <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        </div>
-        <p class="signal__state" data-signal-state>Semnal slab</p>
-        <div class="sms">
-          <p class="sms__bubble">Unde ești? Nu te mai văd</p>
-          <p class="sms__fail"><svg class="i" aria-hidden="true"><use href="#i-priority"/></svg> Netrimis. Atinge ca să încerci din nou.</p>
+      <figure class="phone phone--sms" data-phone="sms" aria-label="Aplicația de SMS a telefonului: mesajul către Ana nu pleacă">
+        <div class="phone__screen">
+          <div class="sb" aria-hidden="true">
+            <span>21:47</span>
+            <span class="sb__right"><b class="sb__net" data-carrier>4G</b><span class="bars" data-bars><i></i><i></i><i></i><i></i></span><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2" class="sb__batt"/><rect x="9" y="9" width="6" height="10" rx="1" class="sb__fill"/></svg></span>
+          </div>
+          <div class="appbar">
+            <span class="gbtn"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></span>
+            <span class="avatar avatar--sms">A</span>
+            <span class="appbar__who"><b>Ana</b><small>SMS</small></span>
+          </div>
+          <div class="thread">
+            <p class="thread__day">Azi</p>
+            <div class="b b--in b--first b--last"><p>Am ajuns, te aștept la baruri<span class="b__meta">21:31</span></p></div>
+            <div class="b b--out b--first b--last">
+              <p>Unde ești? Nu te mai văd<span class="b__meta">21:47</span></p>
+              <small class="sms__state" data-sms-state>Se trimite…</small>
+            </div>
+          </div>
+          <div class="composer" aria-hidden="true">
+            <span class="composer__field">Mesaj text</span>
+          </div>
         </div>
       </figure>
     </div>
   </section>
 
-  <section class="chapter" id="retea" style="--len: 230" aria-labelledby="retea-t">
+  <section class="chapter" id="retea" style="--len: 200" aria-labelledby="retea-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="retea-t">Mulțimea devine rețeaua.</h2>
-        <p>{{APP_NAME}} leagă fiecare telefon de câțiva vecini, prin Bluetooth. Telefoanele cu aplicația se prind unele de altele, ca o plasă întinsă peste mulțime. Fără antene, fără internet, fără server.</p>
-        <p class="note">Fiecare telefon ține legătura cu cel mult 7 vecini și își caută singur alții când unul pleacă.</p>
-      </div>
-      <div class="meshstat" aria-live="off">
-        <p class="netchip netchip--live"><span class="ping" aria-hidden="true"></span><span data-mesh-links>Conectat la 4 telefoane</span></p>
-        <p class="meshstat__count"><b data-mesh-count>0</b> <span>telefoane în rețea</span></p>
+        <p>{{APP_NAME}} leagă fiecare telefon de câțiva vecini, prin Bluetooth. Telefoanele cu aplicația se prind unele de altele, ca o plasă întinsă peste mulțime. Rețeaua nu trece prin antene, prin internet sau printr-un server.</p>
+        <p class="note"><span data-mesh-line>Până aici s-au legat 0 telefoane.</span> <span class="note__more">Fiecare ține legătura cu cel mult 7 vecini și își caută singur alții când unul pleacă.</span></p>
       </div>
     </div>
   </section>
 
-  <section class="chapter chapter--phone" id="mesaj" style="--len: 330" aria-labelledby="mesaj-t">
+  <section class="chapter chapter--phone" id="mesaj" style="--len: 280" aria-labelledby="mesaj-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="mesaj-t">Mesajul sare din telefon în telefon.</h2>
@@ -161,7 +163,7 @@
     </div>
   </section>
 
-  <section class="chapter chapter--phone" id="raport" style="--len: 330" aria-labelledby="raport-t">
+  <section class="chapter chapter--phone" id="raport" style="--len: 280" aria-labelledby="raport-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="raport-t">Ajutor în două atingeri.</h2>
@@ -235,7 +237,7 @@
     </div>
   </section>
 
-  <section class="chapter" id="sigilat" style="--len: 250" aria-labelledby="sigilat-t">
+  <section class="chapter" id="sigilat" style="--len: 210" aria-labelledby="sigilat-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="sigilat-t">Pe drum, raportul e sigilat.</h2>
@@ -244,48 +246,43 @@
       <figure class="packet" aria-labelledby="packet-t">
         <figcaption id="packet-t">Ce vede un telefon de pe drum</figcaption>
         <div class="packet__head">
-          <span class="f f--1"><b>01</b><small>versiune</small></span>
-          <span class="f f--1"><b>10</b><small>raport</small></span>
-          <span class="f f--1 f--ttl"><b data-ttl>05</b><small>ttl</small></span>
-          <span class="f f--1"><b>04</b><small>criptat</small></span>
-          <span class="f f--8"><b data-packet-id>9f 3a 71 c2 0b 8e 4d 10</b><small>id</small></span>
-          <span class="f f--8 f--zero"><b>00 00 00 00 00 00 00 00</b><small>expeditor: nimeni</small></span>
-          <span class="f f--4"><b data-packet-time>6a c1 4f 3b</b><small>ora</small></span>
-          <span class="f f--2"><b>00 d6</b><small>lungime</small></span>
+          <span class="f f--more"><b>01</b><small>versiune</small></span>
+          <span class="f"><b>10</b><small>raport</small></span>
+          <span class="f f--ttl"><b data-ttl>05</b><small>ttl</small></span>
+          <span class="f f--more"><b>04</b><small>criptat</small></span>
+          <span class="f f--more"><b>9f 3a 71 c2 0b 8e 4d 10</b><small>id</small></span>
+          <span class="f f--zero"><b>00 00 00 00 00 00 00 00</b><small>expeditor: nimeni</small></span>
+          <span class="f f--more"><b>6a c1 4f 3b</b><small>ora</small></span>
+          <span class="f f--more"><b>00 d6</b><small>lungime</small></span>
         </div>
         <div class="packet__body">
-          <span class="f f--16"><b data-incident-id>c4 1e 90 7a 55 0d e3 b2 18 6f a9 33 07 d1 5c e8</b><small>numărul raportului, la vedere</small></span>
-          <span class="f f--sealed"><b data-sealed aria-hidden="true"></b><small><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>198 de octeți sigilați: categoria, zona, descrierea</small></span>
+          <span class="f f--wide f--more"><b>c4 1e 90 7a 55 0d e3 b2 18 6f a9 33 07 d1 5c e8</b><small>numărul raportului, la vedere</small></span>
+          <span class="f f--wide f--sealed"><b data-sealed aria-hidden="true"></b><small><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>198 de octeți sigilați: categoria, zona, descrierea</small></span>
         </div>
         <p class="packet__sum">26 de octeți de antet, cel mult 480 de date. Încape într-o singură scriere Bluetooth.</p>
       </figure>
     </div>
   </section>
 
-  <section class="chapter" id="asteapta" style="--len: 250" aria-labelledby="asteapta-t">
+  <section class="chapter" id="asteapta" style="--len: 220" aria-labelledby="asteapta-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="asteapta-t">Nu e nimeni în jur? Raportul așteaptă.</h2>
-        <p>Telefoanele păstrează raportul până la 30 de minute și îl dau oricui apare în apropiere. Primul om care trece pe lângă echipa medicală îl duce până acolo, fără să facă nimic.</p>
-      </div>
-      <div class="carry" aria-live="off">
-        <p class="carry__row" data-carry="0"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg><span><b>Păstrat în 3 telefoane</b><small data-carry-left>mai rămân 30 de minute</small></span></p>
-        <p class="carry__row" data-carry="1"><svg class="i" aria-hidden="true"><use href="#i-walk"/></svg><span><b>Cineva trece pe lângă</b><small>îl ia cu el, fără să știe</small></span></p>
-        <p class="carry__row" data-carry="2"><svg class="i" aria-hidden="true"><use href="#i-check-circle-fill"/></svg><span><b>Ajuns la staff</b><small>Punct medical</small></span></p>
+        <p>Telefoanele păstrează raportul până la 30 de minute și îl dau oricui apare în apropiere. Primul om cu aplicația care trece pe lângă echipa medicală îl duce până acolo, fără să știe că îl are la el.</p>
+        <ol class="steps" data-carry>
+          <li><span>Păstrat în 3 telefoane, <span data-carry-left>mai rămân 30 de minute</span></span></li>
+          <li>Cineva trece pe lângă punctul medical</li>
+          <li>Ajuns la staff</li>
+        </ol>
       </div>
     </div>
   </section>
 
-  <section class="chapter" id="harta" style="--len: 250" aria-labelledby="harta-t">
+  <section class="chapter" id="harta" style="--len: 300" aria-labelledby="harta-t">
     <div class="chapter__stage">
       <div class="copy">
         <h2 id="harta-t">Harta festivalului, fără internet.</h2>
         <p>Harta din aplicație are zonele, aleile, ieșirile, toaletele, apa și punctul medical, cu distanța până la ele. Trimiți „Zona mea” și prietenul vede pinul tău pe hartă.</p>
-      </div>
-      <div class="mapcard">
-        <p class="mapcard__row"><svg class="i i--green" aria-hidden="true"><use href="#i-place-fill"/></svg><span><b>Zona ta</b><small>Scena principală · din GPS</small></span></p>
-        <p class="mapcard__row"><span class="avatar avatar--ana avatar--s">A</span><span><b>Ana</b><small>Baruri · chiar acum</small></span></p>
-        <p class="mapcard__row"><svg class="i" aria-hidden="true"><use href="#i-flag"/></svg><span><b>Punct de întâlnire</b><small data-meet-distance>la 120 m de tine</small></span></p>
       </div>
     </div>
   </section>
@@ -312,7 +309,7 @@
         <dl>
           <div><dt>Salturi</dt><dd>cel mult 7</dd></div>
           <div><dt>Legături pe telefon</dt><dd>4 pornite de el, 3 primite</dd></div>
-          <div><dt>Pauză la fiecare salt</dt><dd>50–250 ms, la întâmplare</dd></div>
+          <div><dt>Pauză la fiecare salt</dt><dd>între 50 și 250 ms, la întâmplare</dd></div>
           <div><dt>Același pachet</dt><dd>trimis o singură dată de fiecare telefon</dd></div>
           <div><dt>Ordinea pe legătură</dt><dd>raport, confirmare, chat, restul</dd></div>
           <div><dt>Prioritate la conectare</dt><dd>staff, apoi telefoanele cu un raport netrimis</dd></div>
@@ -380,17 +377,17 @@
         </div>
         <aside class="qr" data-qr hidden aria-label="Cod QR pentru descărcare">
           <div class="qr__code" data-qr-code></div>
-          <p><b>Ești pe calculator?</b> Scanează codul cu telefonul Android.</p>
+          <p>Dacă ești pe calculator, scanează codul cu telefonul Android.</p>
         </aside>
       </div>
 
       <ol class="install">
-        <li><b>Descarcă fișierul.</b> Butonul de mai sus aduce aplicația ca fișier APK.</li>
-        <li><b>Deschide-l.</b> Din notificări sau din Descărcări. Dacă telefonul întreabă, permite instalarea din browser.</li>
-        <li><b>Pornește {{APP_NAME}}.</b> Scrie-ți numele și dă acces la Bluetooth.</li>
-        <li><b>Adaugă-ți prietenii.</b> Scanați-vă codurile, amândoi. De acum vă puteți scrie și fără semnal.</li>
+        <li>Apasă butonul de mai sus. Aplicația se descarcă pe telefon ca fișier APK.</li>
+        <li>Deschide fișierul din notificări sau din Descărcări. Dacă telefonul întreabă, permite instalarea din browser.</li>
+        <li>Pornește {{APP_NAME}}, scrie-ți numele și dă acces la Bluetooth.</li>
+        <li>Scanați-vă codurile cu prietenii, fiecare pe al celuilalt. De acum vă puteți scrie și fără semnal.</li>
       </ol>
-      <p class="dl__ios"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg> Pe iPhone nu merge încă: {{APP_NAME}} e doar pentru Android.</p>
+      <p class="dl__ios">Pe iPhone nu merge încă. {{APP_NAME}} e doar pentru Android.</p>
     </div>
   </section>
 
@@ -453,5 +450,7 @@
   </ul>
   <p class="foot__legal">Font Inter (SIL Open Font License). Iconițe Phosphor (MIT).</p>
 </footer>
+
+<div class="curtain" aria-hidden="true"></div>
 </body>
 </html>

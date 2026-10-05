@@ -1,8 +1,10 @@
-import { meters } from './scene/world.js'
-
+// Povestea de pe scroll: ce face camera, ce se intampla in scena si ce arata telefoanele, la fiecare pozitie.
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v))
 const smooth = (t) => t * t * t * (t * (t * 6 - 15) + 10)
 const lerp = (a, b, t) => a + (b - a) * t
+const linear = (u) => u
+/** Fara miscare ampla: camera taie de la un cadru la altul, la jumatatea drumului. */
+const cut = (u) => (u < 0.5 ? 0 : 1)
 
 /** O valoare care se schimba pe scroll: chei la anumite pozitii, interpolate intre ele. */
 class Track {
@@ -30,15 +32,21 @@ class Track {
   }
 }
 
-/** Pozitia camerei in jurul unui punct: distanta, unghiul de la sud spre est, inaltimea in grade. */
-function orbit(t, dist, az, el, fov, shift) {
-  const a = (az * Math.PI) / 180
-  const e = (el * Math.PI) / 180
+/**
+ * Un cadru al camerei, descris ca la filmare: la ce se uita, de la ce distanta, din ce parte (0 = dinspre sud,
+ * grade spre est) si de cat de sus. Intre doua cadre se schimba aceste valori, deci camera ocoleste subiectul
+ * in loc sa taie drept prin scena.
+ */
+const shot = (target, dist, az, el, fov, shift) => [...target, dist, az, el, fov, ...shift]
+
+function place(s) {
+  const a = (s[4] * Math.PI) / 180
+  const e = (s[5] * Math.PI) / 180
   return [
-    t[0] + Math.sin(a) * Math.cos(e) * dist,
-    t[1] + Math.sin(e) * dist,
-    t[2] + Math.cos(a) * Math.cos(e) * dist,
-    t[0], t[1], t[2], fov, shift[0], shift[1],
+    s[0] + Math.sin(a) * Math.cos(e) * s[3],
+    s[1] + Math.sin(e) * s[3],
+    s[2] + Math.cos(a) * Math.cos(e) * s[3],
+    s[0], s[1], s[2], s[6], s[7], s[8],
   ]
 }
 
@@ -48,13 +56,24 @@ const plural = (n, one, few, many) => {
   return n === 0 || (r >= 1 && r <= 19) ? few.replace('%d', n) : many.replace('%d', n)
 }
 export const viaPhones = (n) => (n <= 0 ? 'direct' : plural(n, 'printr-un telefon', 'prin %d telefoane', 'prin %d de telefoane'))
-export const connectedTo = (n) => plural(n, 'Conectat la un telefon', 'Conectat la %d telefoane', 'Conectat la %d de telefoane')
+const linked = (n) => plural(n, 'Până aici s-a legat un telefon.', 'Până aici s-au legat %d telefoane.', 'Până aici s-au legat %d de telefoane.')
 const minutesLeft = (n) => plural(n, 'mai rămâne un minut', 'mai rămân %d minute', 'mai rămân %d de minute')
-const thousands = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
-const NONE = new Set()
+/** Scrie un text doar cand s-a schimbat, ca pagina sa nu fie atinsa in fiecare cadru. */
+function setText(node, value) {
+  if (node.__text === value) return
+  node.__text = value
+  node.textContent = value
+}
 
-export function createStory(scene) {
+const CHAPTERS = ['cade', 'retea', 'mesaj', 'raport', 'sigilat', 'asteapta', 'harta']
+const SECTIONS = ['acasa', ...CHAPTERS, 'rider', 'descarca', 'intrebari']
+const LATER = new Set(CHAPTERS.slice(1))
+/** Cat din capitol dureaza zborul camerei pana la cadrul lui si de unde incepe sa plece spre urmatorul. */
+const SETTLE = 0.2
+const LEAVE = 0.9
+
+export function createStory(scene, { reduce = false } = {}) {
   const { crowd } = scene
   const s = scene.spots
   const you = [s.you.x, s.you.z]
@@ -66,40 +85,38 @@ export function createStory(scene) {
   const focusT = crowd.scenarios.report.t[crowd.nodes.indexOf(s.focus)]
 
   const el = (sel) => document.querySelector(sel)
-  const sections = ['acasa', 'cade', 'retea', 'mesaj', 'raport', 'sigilat', 'asteapta', 'harta', 'rider', 'descarca', 'intrebari']
-  const nodes = Object.fromEntries(sections.map((id) => [id, el(`#${id}`)]))
+  const all = (sel) => [...document.querySelectorAll(sel)]
+  const nodes = Object.fromEntries(SECTIONS.map((id) => [id, el(`#${id}`)]))
 
   const dom = {
-    netchip: el('[data-netchip]'),
-    netchipText: el('[data-netchip-text]'),
-    signal: el('.signal'),
-    bars: [...document.querySelectorAll('.bars i')],
+    sms: el('[data-phone="sms"]'),
+    net: el('[data-net]'),
+    netLabel: el('[data-net-label]'),
+    netState: el('[data-net-state]'),
+    bars: all('[data-bars]').map((b) => [...b.children]),
     carrier: el('[data-carrier]'),
-    signalState: el('[data-signal-state]'),
-    meshCount: el('[data-mesh-count]'),
-    meshLinks: el('[data-mesh-links]'),
+    smsState: el('[data-sms-state]'),
+    meshLine: el('[data-mesh-line]'),
     chat: el('[data-phone="chat"]'),
     chatSub: el('[data-chat-sub]'),
     outIcon: el('[data-out-icon]'),
-    states: [...document.querySelectorAll('[data-states] li')],
+    states: all('[data-states] li'),
     report: el('[data-phone="report"]'),
-    steps: [...document.querySelectorAll('[data-steps] li')],
-    stepper: [...document.querySelectorAll('[data-stepper] li')],
+    steps: all('[data-steps] li'),
+    stepper: all('[data-stepper] li'),
     ttl: el('[data-ttl]'),
     sealed: el('[data-sealed]'),
-    carry: [...document.querySelectorAll('[data-carry]')],
+    carry: all('[data-carry] li'),
     carryLeft: el('[data-carry-left]'),
-    meet: el('[data-meet-distance]'),
-    rail: [...document.querySelectorAll('[data-rail]')],
+    rail: all('[data-rail]'),
     railBox: el('.rail'),
     nav: el('[data-nav]'),
+    root: document.documentElement,
   }
 
   // textele care depind de ce a iesit in simulare
   dom.states[2].lastChild.textContent = `A ajuns, ${viaPhones(anaHops - 1)}`
-  dom.meshLinks.textContent = connectedTo(crowd.youLinks)
   dom.ttl.textContent = String(8 - scene.focusHop).padStart(2, '0')
-  dom.meet.textContent = `la ${Math.round(meters(you, s.meeting) / 10) * 10} m de tine`
 
   const icons = {
     queued: '<svg class="st" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.4"/><path d="M10 10V5.6M10 10l3.3 1.5"/></svg>',
@@ -111,136 +128,157 @@ export function createStory(scene) {
   let tracks = null
   const timeline = { mesaj: null, raport: null }
 
+  // aceeasi conditie ca in style.css: ecran ingust tinut in picioare, cu textul sub scena
+  const upright = matchMedia('(max-width: 900px) and (max-aspect-ratio: 1/1)')
+  const squat = matchMedia('(max-height: 560px) and (min-aspect-ratio: 1/1)')
+
   function measure() {
-    const vh = window.innerHeight
-    const scrollY = window.scrollY
-    const L = { vh, mobile: window.innerWidth < 900, sec: {} }
-    for (const id of sections) {
+    const L = { vh: window.innerHeight, mobile: upright.matches, short: squat.matches, sec: {} }
+    for (const id of SECTIONS) {
       const r = nodes[id].getBoundingClientRect()
-      const top = r.top + scrollY
-      // capitolele au scena lipita sus, deci se misca pe inaltime minus un ecran; restul, pe toata inaltimea
-      const sticky = nodes[id].classList.contains('chapter')
-      L.sec[id] = { top, h: r.height, span: Math.max(1, sticky ? r.height - vh : r.height) }
+      L.sec[id] = { top: r.top + window.scrollY, h: Math.max(1, r.height) }
     }
+    L.storyEnd = Math.min(L.sec.rider.top, L.sec.descarca.top - L.vh)
     return L
   }
 
   function build() {
     layout = measure()
-    const { mobile, sec } = layout
-    const Y = (id, p) => sec[id].top + sec[id].span * p
-    const sh = (dx, my, dy = 0) => (mobile ? [0, my] : [dx, dy])
+    const { mobile, short, sec } = layout
+    const Y = (id, p) => sec[id].top + sec[id].h * p
+    // pe ecrane late subiectul sta in dreapta textului; pe telefon, deasupra lui
+    const sh = (dx, my, dy = 0) => (mobile ? [0, my] : [short ? Math.min(dx, -0.2) : dx, dy])
     const d = (v) => (mobile ? v * 1.42 : v)
 
     const pinT = [you[0], 3.7, you[1]]
-    const midMsg = [(you[0] + s.ana.x) / 2, 0, (you[1] + s.ana.z) / 2]
-    const midRep = [(s.reporter.x + s.medic.x) / 2, 0, (s.reporter.z + s.medic.z) / 2]
-    const f = [s.focus.x, s.focus.y + 0.15, s.focus.z]
-    const waitT = [(s.holders[0] + s.tent.x) / 2 + 2, 0, (s.holders[1] + s.tent.z) / 2]
+    // drumul unui val trebuie sa incapa tot in cadru, oricum ar iesi simularea: camera se departeaza cat e nevoie
+    const frame = (nodes, base) => {
+      const xs = nodes.map((n) => n.x)
+      const zs = nodes.map((n) => n.z)
+      const x = (Math.min(...xs) + Math.max(...xs)) / 2
+      const z = (Math.min(...zs) + Math.max(...zs)) / 2
+      const r = Math.max(...nodes.map((n) => Math.hypot(n.x - x, n.z - z)))
+      return { at: [x, 0, z], dist: mobile ? Math.max(base * 1.42, r * 6.4) : Math.max(base, r * 3.3) }
+    }
+    const msg = frame(pathMsg, 50)
+    const rep = frame(crowd.path.report, 54)
+    const f = [s.focus.x, s.focus.y - 0.1, s.focus.z]
+    const waitA = [(s.holders[0] + s.tent.x) / 2, 1.2, (s.holders[1] + s.tent.z) / 2]
+    const waitB = [s.tent.x - 4, 1.4, s.tent.z - 6]
+    const wide = [0, 8, -40]
 
+    // cate doua cadre pe capitol: unde se asaza camera si unde ajunge, incet, pana la sfarsitul lui
     const P = {
-      hero: orbit(pinT, mobile ? 29 : 18, -20, 12, 38, sh(-0.19, 0.27)),
-      hero2: orbit([pinT[0], 3.2, pinT[1]], d(24), -10, 19, 38, sh(-0.12, 0.18)),
-      cade: orbit(mobile ? [72, 8, -72] : [38, 6, -44], d(190), -24, 29, 40, sh(-0.12, 0.12)),
-      cade2: orbit(mobile ? [72, 8, -72] : [38, 6, -44], d(178), -14, 32, 40, sh(-0.12, 0.12)),
-      retea: orbit([you[0] + 2, 0, you[1] + 3], d(60), 32, 34, 40, sh(-0.08, 0.16)),
-      retea2: orbit([you[0] + 2, 0, you[1] + 3], d(66), 20, 40, 40, sh(-0.08, 0.16)),
-      mesaj: orbit(midMsg, d(50), -20, 57, 40, sh(-0.05, 0.22)),
-      mesaj2: orbit(midMsg, d(46), -10, 61, 40, sh(-0.05, 0.22)),
-      raport: orbit(midRep, d(54), 45, 53, 40, sh(-0.05, 0.22)),
-      raport2: orbit(midRep, d(50), 37, 57, 40, sh(-0.05, 0.22)),
-      sigilat: orbit(f, d(7.6), 30, 16, 34, sh(0, 0.12)),
-      sigilat2: orbit(f, d(7), 12, 21, 34, sh(0, 0.12)),
-      asteapta: orbit(waitT, d(58), -34, 52, 40, sh(-0.08, 0.2)),
-      asteapta2: orbit(waitT, d(54), -24, 57, 40, sh(-0.08, 0.2)),
-      harta: orbit([4, 0, -2], d(262), 0, 62, 40, sh(-0.21, 0.04, 0.12)),
-      harta2: orbit([4, 0, -2], d(252), 5, 66, 40, sh(-0.21, 0.04, 0.12)),
-      final: orbit(pinT, d(22), -34, 7, 36, sh(-0.22, 0.24)),
-      final2: orbit(pinT, d(24), -26, 11, 36, sh(-0.22, 0.24)),
+      hero: shot(pinT, mobile ? 29 : 18, -20, 12, 38, sh(-0.19, 0.27)),
+      hero2: shot([pinT[0], 3.2, pinT[1]], d(24), -10, 19, 38, sh(-0.12, 0.18)),
+      cade: [shot(wide, d(120), -24, 14, 40, sh(-0.12, 0.02, -0.05)), shot(wide, d(112), -15, 16, 40, sh(-0.12, 0, -0.07))],
+      retea: [shot([you[0] + 2, 0, you[1] + 3], d(60), 32, 34, 40, sh(-0.08, 0.16)), shot([you[0] + 2, 0, you[1] + 3], d(66), 20, 40, 40, sh(-0.08, 0.16))],
+      mesaj: [shot(msg.at, msg.dist, -20, 57, 40, sh(-0.05, 0.14)), shot(msg.at, msg.dist * 0.92, -10, 61, 40, sh(-0.05, 0.14))],
+      raport: [shot(rep.at, rep.dist, 45, 53, 40, sh(-0.05, 0.13)), shot(rep.at, rep.dist * 0.92, 37, 57, 40, sh(-0.05, 0.13))],
+      sigilat: [shot(f, d(7.4), 34, 17, 34, sh(0.02, -0.13)), shot(f, d(6.8), 16, 22, 34, sh(0.02, -0.13))],
+      // privim dinspre nord: trecatorul pleaca de langa noi spre cortul luminat, care e deschis spre camera
+      asteapta: mobile
+        ? [shot(waitA, 56, -166, 30, 40, [0, 0.16]), shot(waitB, 40, -158, 26, 40, [0, 0.14])]
+        : [shot(waitA, 38, -150, 25, 40, [-0.17, 0]), shot(waitB, 24, -140, 21, 40, [-0.16, 0])],
+      // pe telefon harta sta in picioare, cu nordul spre dreapta, ca sa incapa toata
+      harta: mobile
+        ? [shot([0, 0, 0], 440, 90, 66, 40, [0, 0.13]), shot([0, 0, 0], 428, 87, 70, 40, [0, 0.13])]
+        : [shot([0, 0, -2], 300, 0, 62, 40, [short ? -0.24 : -0.19, 0.1]), shot([0, 0, -2], 290, 5, 66, 40, [short ? -0.24 : -0.19, 0.1])],
+      final: shot(pinT, d(22), -14, 9, 36, sh(-0.22, 0.24)),
+      final2: shot(pinT, d(24), -8, 12, 36, sh(-0.22, 0.24)),
     }
 
-    const cam = new Track()
+    const R = sec.rider.top
+    const cam = new Track(reduce ? cut : smooth)
       .key(Y('acasa', 0), P.hero)
-      .key(Y('acasa', 0.45), P.hero2)
-    const scenes = [['cade', P.cade, P.cade2], ['retea', P.retea, P.retea2], ['mesaj', P.mesaj, P.mesaj2], ['raport', P.raport, P.raport2], ['sigilat', P.sigilat, P.sigilat2], ['asteapta', P.asteapta, P.asteapta2], ['harta', P.harta, P.harta2]]
-    for (const [id, a, b] of scenes) cam.key(Y(id, 0.12), a).key(Y(id, 0.9), b)
-    cam.key(sec.rider.top + layout.vh * 0.9, P.harta2)
-      .key(sec.rider.top + layout.vh * 1.0, P.final)
-      .key(Y('descarca', 0.0), P.final)
-      .key(Y('descarca', 1), P.final2)
+      .key(Y('acasa', 0.45), reduce ? P.hero : P.hero2)
+    for (const id of CHAPTERS) cam.key(Y(id, SETTLE), P[id][0]).key(Y(id, LEAVE), P[id][reduce ? 0 : 1])
+    // cat timp foaia rider-ului acopera tot ecranul, camera se muta la cadrul de la descarcare
+    cam.key(R, P.harta[reduce ? 0 : 1])
+      .key(R + 1, P.final)
+      .key(Y('descarca', 0), P.final)
+      .key(Y('descarca', 1), reduce ? P.final : P.final2)
 
     const num = (pairs, easing) => {
       const t = new Track(easing)
       for (const [y, v] of pairs) t.key(y, v)
       return t
     }
-    const linear = (u) => u
-    const R = sec.rider.top
     tracks = {
       cam,
-      crowd: num([[Y('acasa', 0), 1], [Y('harta', 0), 1], [Y('harta', 0.15), 0.14], [R, 0.14], [R + 1, 1]]),
-      dim: num([[Y('retea', 0), 0], [Y('retea', 0.6), 0.35], [Y('mesaj', 0.1), 0.7], [Y('asteapta', 0.9), 0.7], [Y('harta', 0.1), 0], [R + 1, 0]]),
-      mesh: num([[Y('retea', 0.05), 0], [Y('retea', 0.12), 1], [Y('asteapta', 0.95), 1], [Y('harta', 0.12), 0]]),
-      reveal: num([[Y('retea', 0.12), 0], [Y('retea', 0.8), 150], [Y('mesaj', 0), 400]], linear),
-      youLinks: num([[Y('retea', 0), 0], [Y('retea', 0.1), 1]]),
+      crowd: num([[Y('harta', 0.02), 1], [Y('harta', 0.2), 0.14], [R, 0.14], [R + 1, 1]]),
+      dim: num([[Y('retea', 0.1), 0], [Y('retea', 0.7), 0.35], [Y('mesaj', 0.15), 0.7], [Y('asteapta', 0.92), 0.7], [Y('harta', 0.12), 0], [R + 1, 0]]),
+      mesh: num([[Y('retea', 0.14), 0], [Y('retea', 0.22), 1], [Y('asteapta', 0.96), 1], [Y('harta', 0.14), 0]]),
+      reveal: num([[Y('retea', 0.22), 0], [Y('retea', 0.88), 150], [Y('mesaj', 0.05), 400]], linear),
+      youLinks: num([[Y('retea', 0.06), 0], [Y('retea', 0.2), 1], [Y('asteapta', 0.96), 1], [Y('harta', 0.14), 0]]),
       ping: num([[Y('acasa', 0), 1], [Y('acasa', 0.7), 0], [R, 0], [R + 1, 1]]),
-      spot: num([[Y('acasa', 0.3), 1], [Y('cade', 0.1), 0.25], [Y('harta', 0), 0.25], [Y('harta', 0.2), 0.7], [R, 0.7], [R + 1, 1]]),
-      stage: num([[Y('cade', 0), 1], [Y('harta', 0.05), 1], [Y('harta', 0.2), 0.45], [R, 0.45], [R + 1, 1]]),
-      tower: num([[Y('acasa', 0.6), 0], [Y('cade', 0.12), 1], [Y('cade', 0.92), 1], [Y('retea', 0.1), 0]]),
-      loss: num([[Y('cade', 0.22), 0], [Y('cade', 0.84), 1]], linear),
-      towerLamp: num([[Y('acasa', 0.5), 0.4], [Y('cade', 0.1), 1], [Y('retea', 0.2), 0.4]]),
-      map: num([[Y('harta', 0.02), 0], [Y('harta', 0.2), 1], [R, 1], [R + 1, 0]]),
-      pinScale: num([[Y('harta', 0.02), 1], [Y('harta', 0.22), 3.4], [R, 3.4], [R + 1, 1]]),
-      parallax: num([[Y('acasa', 0.4), 1], [Y('cade', 0.1), 0.25], [R, 0.25], [R + 1, 1]]),
-      fog: num([[Y('acasa', 0), 0.0085], [Y('acasa', 0.8), 0.006], [Y('cade', 0.12), 0.0024], [Y('cade', 0.9), 0.0024], [Y('retea', 0.12), 0.0042], [Y('sigilat', 0), 0.0045], [Y('sigilat', 0.12), 0.011], [Y('sigilat', 0.9), 0.011], [Y('asteapta', 0.12), 0.0045], [Y('harta', 0.12), 0.0016], [R, 0.0016], [R + 1, 0.0085]], linear),
-      led2: num([[Y('acasa', 0), 0.16], [Y('acasa', 0.6), 0.3], [Y('cade', 0.1), 1], [R, 1], [R + 1, 0.16]]),
-      base: num([[Y('retea', 0), 0.3], [Y('mesaj', 0.05), 0.12], [Y('sigilat', 0.95), 0.12], [Y('asteapta', 0.1), 0.2]]),
-      hold: num([[Y('asteapta', 0), 0], [Y('asteapta', 0.08), 1], [Y('asteapta', 0.78), 1], [Y('asteapta', 0.92), 0]]),
-      walker: num([[Y('asteapta', 0.18), 0], [Y('asteapta', 0.92), 1]], linear),
-      capsule: num([[Y('sigilat', 0.04), 0], [Y('sigilat', 0.12), 1], [Y('sigilat', 0.9), 1], [Y('sigilat', 0.98), 0]]),
+      spot: num([[Y('acasa', 0.3), 1], [Y('cade', 0.16), 0.25], [Y('harta', 0.02), 0.25], [Y('harta', 0.22), 0.7], [R, 0.7], [R + 1, 1]]),
+      stage: num([[Y('harta', 0.05), 1], [Y('harta', 0.22), 0.45], [R, 0.45], [R + 1, 1]]),
+      tower: num([[Y('acasa', 0.6), 0], [Y('cade', 0.18), 1], [Y('cade', 0.94), 1], [Y('retea', 0.14), 0]]),
+      loss: num([[Y('cade', 0.32), 0], [Y('cade', 0.84), 1]], linear),
+      towerLamp: num([[Y('acasa', 0.5), 0.4], [Y('cade', 0.16), 1], [Y('retea', 0.25), 0.4]]),
+      map: num([[Y('harta', 0.05), 0], [Y('harta', 0.22), 1], [R, 1], [R + 1, 0]]),
+      pinScale: num([[Y('harta', 0.05), 1], [Y('harta', 0.24), 3.4], [R, 3.4], [R + 1, 1]]),
+      parallax: num([[Y('acasa', 0.4), 1], [Y('cade', 0.16), 0.25], [R, 0.25], [R + 1, 1]]),
+      fog: num([
+        [Y('acasa', 0), 0.0085], [Y('acasa', 0.8), 0.006], [Y('cade', SETTLE), 0.0024], [Y('cade', LEAVE), 0.0024],
+        [Y('retea', SETTLE), 0.0042], [Y('raport', LEAVE), 0.0045], [Y('sigilat', SETTLE), 0.0105], [Y('sigilat', LEAVE), 0.0105],
+        [Y('asteapta', SETTLE), 0.0045], [Y('harta', SETTLE), 0.0016], [R, 0.0016], [R + 1, 0.0085],
+      ], linear),
+      led2: num([[Y('acasa', 0), 0.5], [Y('acasa', 0.6), 0.6], [Y('cade', 0.16), 1], [R, 1], [R + 1, 0.5]]),
+      base: num([[Y('retea', 0.3), 0.3], [Y('mesaj', 0.1), 0.12], [Y('sigilat', 0.96), 0.12], [Y('asteapta', 0.16), 0.2]]),
+      hold: num([[Y('asteapta', 0.08), 0], [Y('asteapta', 0.18), 1], [Y('asteapta', 0.8), 1], [Y('asteapta', 0.92), 0]]),
+      walker: num([[Y('asteapta', 0.28), 0], [Y('asteapta', 0.92), 1]], linear),
+      capsule: num([[Y('sigilat', 0.1), 0], [Y('sigilat', 0.18), 1], [Y('sigilat', 0.92), 1], [Y('sigilat', 0.98), 0]]),
     }
 
-    // ceasul fiecarui capitol cu valuri: secunde de simulare pe o portiune din scroll
+    // ceasul capitolelor cu valuri: cate secunde de simulare incap intr-o portiune de scroll
     const mStart = 0.4
     const bStart = mStart + times.ana + 0.7
-    const mEnd = bStart + times.delivered + 0.9
-    timeline.mesaj = { from: 0.14, to: 0.86, end: mEnd, a: mStart, b: bStart }
+    timeline.mesaj = { from: 0.26, to: 0.84, end: bStart + times.delivered + 0.9, a: mStart, b: bStart }
     const rStart = 0.35
     const ackStart = rStart + times.medic + 1.1
-    const rEnd = ackStart + times.ack + 0.8
-    timeline.raport = { from: 0.18, to: 0.9, end: rEnd, a: rStart, b: ackStart }
+    timeline.raport = { from: 0.3, to: 0.88, end: ackStart + times.ack + 0.8, a: rStart, b: ackStart }
   }
 
-  function progress(id, y) {
-    const sc = layout.sec[id]
-    return (y - sc.top) / sc.span
-  }
+  const progress = (id, y) => (y - layout.sec[id].top) / layout.sec[id].h
 
   let current = ''
   let scramble = 0
   const state = {
     cam: [0, 0, 0, 0, 0, 0, 38, 0, 0],
     chA: null, chB: null, colA: '#30D158', colB: '#D3D8B2',
-    fa: -10, fb: -10, led: 'logo', tags: NONE,
+    fa: -10, fb: -10, led: 'logo', tags: new Set(),
   }
 
   function sample(y, t) {
     if (!layout) build()
     for (const [k, tr] of Object.entries(tracks)) state[k] = tr.at(y)
+    state.cam = place(state.cam)
 
-    // capitolul care ocupa mijlocul ecranului
-    const mid = y + layout.vh * 0.5
+    // Sectiunea curenta. Capitolele stau pe loc pana la capat, deci urmatorul incepe cand ajunge sus;
+    // restul paginii curge, deci acolo conteaza ce a trecut de mijlocul ecranului.
     let active = 'acasa'
-    for (const id of sections) if (mid >= layout.sec[id].top) active = id
+    for (const id of SECTIONS) {
+      const lead = LATER.has(id) ? layout.vh * 0.05 : layout.vh * 0.5
+      if (y + lead >= layout.sec[id].top) active = id
+    }
     if (active !== current) {
       current = active
       dom.rail.forEach((a) => a.classList.toggle('is-on', a.dataset.rail === active))
-      dom.railBox.classList.toggle('is-on', ['cade', 'retea', 'mesaj', 'raport', 'sigilat', 'asteapta', 'harta'].includes(active))
+      dom.railBox.classList.toggle('is-on', CHAPTERS.includes(active))
     }
-    for (const id of ['cade', 'retea', 'mesaj', 'raport', 'sigilat', 'asteapta', 'harta']) {
+    // textul fiecarui capitol sta pe loc cat timp camera e la cadrul lui; intra de jos si iese in sus
+    CHAPTERS.forEach((id, i) => {
       const p = progress(id, y)
-      nodes[id].classList.toggle('is-in', p > -0.6 && p < 1.15)
-    }
+      const from = i === 0 ? 0.04 : 0.08
+      // ultimul capitol ramane pana il acopera foaia rider-ului
+      const past = i === CHAPTERS.length - 1 ? y >= layout.storyEnd : p >= 0.95
+      nodes[id].classList.toggle('is-in', p >= from && !past)
+      nodes[id].classList.toggle('is-past', past)
+    })
+    const inStory = y > layout.sec.cade.top - layout.vh * 0.35 && y < layout.sec.rider.top
+    dom.root.classList.toggle('in-story', inStory)
     dom.nav.classList.toggle('is-solid', y > 40)
 
     state.chA = null
@@ -248,30 +286,30 @@ export function createStory(scene) {
     state.fa = -10
     state.fb = -10
     state.led = 'logo'
-    const tags = new Set()
-
-    if (active === 'acasa') {
-      const linked = t > 1.6
-      dom.netchip.classList.toggle('is-linked', linked)
-      dom.netchipText.textContent = linked ? connectedTo(crowd.youLinks) : 'Caut telefoane în apropiere'
-    }
+    const tags = state.tags
+    tags.clear()
 
     if (active === 'cade') {
       const loss = state.loss
       tags.add('tower')
       state.led = loss > 0.55 ? 'nosignal' : 'logo'
       const off = Math.round(loss * 4.4)
-      dom.bars.forEach((b, i) => b.classList.toggle('is-off', i >= 4 - off))
+      for (const bars of dom.bars) bars.forEach((b, i) => b.classList.toggle('is-off', i >= 4 - off))
       const dead = loss >= 0.86
-      dom.signal.classList.toggle('is-dead', dead)
-      dom.carrier.textContent = dead ? 'SOS' : loss > 0.5 ? 'E' : '4G'
-      dom.signalState.textContent = dead ? 'Fără serviciu' : loss > 0.4 ? 'Se trimite…' : 'Semnal slab'
+      const carrier = loss > 0.5 ? 'E' : '4G'
+      dom.sms.classList.toggle('is-dead', dead)
+      dom.net.classList.toggle('is-dead', dead)
+      setText(dom.carrier, dead ? '' : carrier)
+      setText(dom.smsState, dead ? 'Netrimis. Atinge ca să încerci din nou.' : 'Se trimite…')
+      // pe telefon nu incape macheta; aceeasi stare apare intr-un rand sub text
+      setText(dom.netLabel, dead ? 'Fără semnal' : carrier)
+      setText(dom.netState, dead ? 'SMS-ul către Ana nu a plecat' : 'SMS-ul către Ana se trimite…')
     }
 
     if (active === 'retea') {
       tags.add('you')
       state.led = 'mesh'
-      dom.meshCount.textContent = thousands(scene.meshCount(state.reveal))
+      setText(dom.meshLine, linked(scene.meshCount(state.reveal)))
     }
 
     if (active === 'mesaj') {
@@ -287,19 +325,19 @@ export function createStory(scene) {
       tags.add('you').add('ana')
       pathMsg.slice(1, -1).forEach((_, i) => { if (state.fa >= msgT[i + 1]) tags.add(`hop${i + 1}`) })
       let st = 0
-      if (p > 0.06) st = 1
+      if (p > 0.16) st = 1
       if (state.fa > 0.12) st = 2
       if (state.fb >= times.delivered) st = 3
-      if (p > 0.9) st = 4
-      if (p > 0.95) st = 5
-      setPhone(dom.chat, st, 5)
-      dom.outIcon.innerHTML = st >= 3 ? icons.delivered : st >= 2 ? icons.sent : icons.queued
-      dom.chatSub.textContent = st >= 3 ? `În apropiere · ${viaPhones(anaHops - 1)}` : 'Văzut acum 6 min'
-      dom.states.forEach((li, i) => {
-        const now = (st === 1 && i === 0) || (st === 2 && i === 1) || (st >= 3 && i === 2)
-        li.classList.toggle('is-now', now)
-        li.classList.toggle('is-on', i <= Math.min(2, st - 1) && st > 0)
-      })
+      if (p > 0.87) st = 4
+      if (p > 0.91) st = 5
+      if (setPhone(dom.chat, st, 5)) {
+        dom.outIcon.innerHTML = st >= 3 ? icons.delivered : st >= 2 ? icons.sent : icons.queued
+        setText(dom.chatSub, st >= 3 ? `În apropiere · ${viaPhones(anaHops - 1)}` : 'Văzut acum 6 min')
+        dom.states.forEach((li, i) => {
+          li.classList.toggle('is-now', (st === 1 && i === 0) || (st === 2 && i === 1) || (st >= 3 && i === 2))
+          li.classList.toggle('is-on', st > 0 && i <= Math.min(2, st - 1))
+        })
+      }
     }
 
     if (active === 'raport') {
@@ -314,27 +352,30 @@ export function createStory(scene) {
       state.fb = T - tl.b
       tags.add('reporter').add('medic')
       let st = 0
-      if (p > 0.07) st = 1
-      if (p > 0.15) st = 2
+      if (p > 0.15) st = 1
+      if (p > 0.24) st = 2
       if (state.fa > firstHop) st = 3
       if (state.fa >= times.medic) st = 4
       if (state.fb >= times.ack) st = 5
-      if (p > 0.95) st = 6
-      setPhone(dom.report, st, 6)
-      const step = st - 2
-      ;[dom.steps, dom.stepper].forEach((list) => list.forEach((li, i) => {
-        li.classList.toggle('is-on', st >= 2 && i <= step)
-        li.classList.toggle('is-now', st >= 2 && i === step && i < 4)
-      }))
+      if (p > 0.92) st = 6
+      if (setPhone(dom.report, st, 6)) {
+        const step = st - 2
+        for (const list of [dom.steps, dom.stepper]) {
+          list.forEach((li, i) => {
+            li.classList.toggle('is-on', st >= 2 && i <= step)
+            li.classList.toggle('is-now', st >= 2 && i === step && i < 4)
+          })
+        }
+      }
     }
 
     if (active === 'sigilat') {
       const p = progress('sigilat', y)
       state.chA = 'report'
       state.colA = '#FF9F0A'
-      state.fa = focusT + (p - 0.5) * 3.4
+      state.fa = focusT + (p - 0.55) * 3.4
       tags.add('focus')
-      if (t - scramble > 0.09) {
+      if (t - scramble > 0.09 || scramble > t) {
         scramble = t
         dom.sealed.textContent = sealedBytes(198)
       }
@@ -345,10 +386,12 @@ export function createStory(scene) {
       tags.add('tent')
       if (state.hold > 0.3) tags.add('holders')
       const w = state.walker
-      dom.carry[0].classList.toggle('is-on', p > 0.02)
-      dom.carry[1].classList.toggle('is-on', w > 0.05)
-      dom.carry[2].classList.toggle('is-on', w > 0.86)
-      dom.carryLeft.textContent = minutesLeft(30 - Math.floor(clamp(p) * 4))
+      const step = w > 0.86 ? 2 : w > 0.04 ? 1 : p > 0.14 ? 0 : -1
+      dom.carry.forEach((li, i) => {
+        li.classList.toggle('is-on', i <= step)
+        li.classList.toggle('is-now', i === step && i < 2)
+      })
+      setText(dom.carryLeft, minutesLeft(30 - Math.floor(clamp((p - 0.14) / 0.8) * 4)))
     }
 
     if (active === 'harta') {
@@ -357,32 +400,38 @@ export function createStory(scene) {
       for (let i = 0; i < scene.poiCount; i++) tags.add(`poi-${i}`)
     }
 
-    state.tags = tags
     return state
   }
 
+  /** Schimba starea unui telefon; intoarce true doar cand chiar s-a schimbat. */
   function setPhone(phone, st, max) {
-    if (phone.dataset.st === String(st)) return
+    if (phone.dataset.st === String(st)) return false
     phone.dataset.st = String(st)
     for (let i = 0; i <= max; i++) phone.classList.toggle(`s-${i}`, i === st)
+    return true
   }
 
-  /** Cat din fereastra acopera canvasul: sub sectiunile opace nu mai desenam nimic. */
+  /** Sub sectiunile opace nu mai desenam nimic. */
   function sceneVisible(y) {
     if (!layout) return true
-    const vh = layout.vh
     const { rider, descarca, intrebari } = layout.sec
-    const top = y
-    const bottom = y + vh
-    const open1 = top < rider.top
-    const open2 = bottom > descarca.top && top < intrebari.top
-    return open1 || open2
+    return y < rider.top || (y + layout.vh > descarca.top && y < intrebari.top)
+  }
+
+  /** Unde aterizeaza un link catre o sectiune: la capitole, in punctul in care camera s-a asezat. */
+  function landing(id) {
+    if (!layout) build()
+    const sc = layout.sec[id]
+    if (!sc) return null
+    const y = CHAPTERS.includes(id) ? sc.top + sc.h * (SETTLE + 0.04) : sc.top
+    return Math.round(Math.min(y, document.documentElement.scrollHeight - layout.vh))
   }
 
   return {
     sample,
     rebuild: build,
     sceneVisible,
+    landing,
     get layout() { return layout },
   }
 }

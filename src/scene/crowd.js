@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { inside, SPOTS, STAGE, STAGE2, zone } from './world.js'
+import { BOUNCE } from './people.js'
+import { blocked, inside, LAYOUT, SPOTS, STAGE, STAGE2, zone } from './world.js'
 
 export function rng(seed) {
   let s = seed >>> 0
@@ -13,12 +14,17 @@ export function rng(seed) {
 }
 
 export const LINK_RANGE = 10.5
+/** Cat de repede trece primul ping peste multime, in unitati pe secunda. */
+export const WAKE_SPEED = 36
 const HOP_TIME = 0.5
 const NEVER = 1e6
 
+const TAU = Math.PI * 2
+
 /**
- * Telefoanele din multime. Toate se vad ca lumini; o parte au aplicatia si formeaza reteaua.
- * Asezarea urmeaza zonele din venue.json: lume deasa in fata scenelor, ciorchini la baruri si la mancare.
+ * Oamenii din multime, fiecare cu telefonul ridicat. Toate telefoanele se vad ca lumini; o parte au aplicatia si
+ * formeaza reteaua. Asezarea urmeaza zonele din venue.json: lume deasa in fata scenelor, ciorchini la baruri si
+ * la mancare. `energy` spune cat sare omul pe ritm, `face` incotro priveste.
  */
 export function generate(density = 1) {
   const rand = rng(20261005)
@@ -30,28 +36,43 @@ export function generate(density = 1) {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
   }
   const phones = []
-  const add = (x, z, app = rand() < 0.05) => phones.push({ x, z, y: 1.35 + rand() * 0.6, app, seed: rand() })
+  const [youX, youZ] = SPOTS.you
+  const toward = (x, z, tx, tz, spread) => Math.atan2(tx - x, tz - z) + (rand() - 0.5) * spread
+  const add = (x, z, energy = 0.08, face = rand() * TAU) => {
+    // nimeni nu sta pe o constructie si nici sub pin
+    if (blocked(x, z) || Math.hypot(x - youX, z - youZ) < 2.7) return false
+    phones.push({ x, z, y: 1.35 + rand() * 0.6, app: rand() < 0.05, seed: rand(), energy, face })
+    return true
+  }
 
-  const fill = (zn, count, weight) => {
+  const fill = (zn, count, weight, who) => {
     let placed = 0
     for (let tries = 0; placed < count && tries < count * 60; tries++) {
       const x = zn.x0 + rand() * (zn.x1 - zn.x0)
       const z = zn.z0 + rand() * (zn.z1 - zn.z0)
       if (!inside(zn.pts, x, z) || rand() > weight(x, z)) continue
-      add(x, z)
-      placed++
+      const [energy, face] = who ? who(x, z) : [undefined, undefined]
+      if (add(x, z, energy, face)) placed++
     }
   }
-  const blob = (cx, cz, sx, sz, count) => {
-    for (let i = 0; i < count; i++) add(cx + gauss() * sx, cz + gauss() * sz)
+  const blob = (cx, cz, sx, sz, count, tx = cx, tz = cz) => {
+    for (let i = 0; i < count; i++) {
+      const x = cx + gauss() * sx
+      const z = cz + gauss() * sz
+      add(x, z, 0.08, toward(x, z, tx, tz, 1.6))
+    }
   }
   const n = (v) => Math.round(v * density)
 
+  // in fata scenei mari: toti cu fata la scena, iar primele randuri sar cel mai tare
   const ms = zone['main-stage']
   fill(ms, n(3300), (x, z) => {
     if (z < STAGE.barrier + 0.9) return 0
     const t = (z - ms.z0) / (ms.z1 - ms.z0)
     return 0.22 + 0.78 * Math.pow(1 - t, 1.5)
+  }, (x, z) => {
+    const t = (z - ms.z0) / (ms.z1 - ms.z0)
+    return [(0.3 + 0.7 * (1 - t)) * (0.45 + 0.55 * rand()), toward(x, z, STAGE.x, STAGE.front, 0.5)]
   })
 
   const s2 = zone['second-stage']
@@ -59,24 +80,27 @@ export function generate(density = 1) {
     if (x > STAGE2.x - 3.5) return 0
     const t = (x - s2.x0) / (s2.x1 - s2.x0)
     return 0.15 + 0.85 * Math.pow(t, 1.6)
+  }, (x, z) => {
+    const t = (x - s2.x0) / (s2.x1 - s2.x0)
+    return [(0.2 + 0.6 * t) * (0.4 + 0.6 * rand()), toward(x, z, STAGE2.x, STAGE2.z, 0.6)]
   })
 
+  // la baruri, lumea sta cu fata la tejghea
   const bar = zone.bar
   fill(bar, n(330), () => 0.5)
-  blob(-20, 2, 3.2, 6, n(150))
-  blob(20, 2, 3.2, 6, n(150))
-  blob(0, 16.5, 7, 2.2, n(130))
+  for (const b of LAYOUT.bars) {
+    const long = b.d > b.w
+    blob(b.x, b.z, long ? 3.4 : 6.6, long ? 6 : 3.2, n(150), b.x, b.z)
+  }
 
   const food = zone.food
   fill(food, n(230), () => 0.6)
-  for (let i = 0; i < 4; i++) {
-    blob(food.x0 + 8 + i * 11, food.z0 + 5, 2.6, 1.8, n(34))
-    blob(food.x0 + 8 + i * 11, food.z1 - 5, 2.6, 1.8, n(34))
-  }
+  for (const t of LAYOUT.trucks) blob(t.x, t.z + t.face * 3.4, 2.4, 1.5, n(34), t.x, t.z)
 
+  // cozile de la porti
   const ent = zone.entrance
-  for (const gx of [-35, -24, -13]) {
-    for (let i = 0; i < n(55); i++) add(gx + gauss() * 0.7, ent.z0 + 2 + rand() * (ent.z1 - ent.z0 - 6))
+  for (const gx of LAYOUT.gates.xs) {
+    for (let i = 0; i < n(55); i++) add(gx + gauss() * 0.7, ent.z0 + 2 + rand() * (ent.z1 - ent.z0 - 7), 0.04, Math.PI + (rand() - 0.5) * 0.5)
   }
   fill(zone.camping, n(120), () => 0.4)
   fill(zone.chill, n(160), (x, z) => 0.3 + 0.7 * Math.exp(-((x - 66) ** 2 + (z - 52) ** 2) / 160))
@@ -215,7 +239,7 @@ export function flood(adj, src, { ttl = 7, dest = -1, seed = 1 } = {}) {
     for (let v = to; v >= 0; v = parent[v]) p.unshift(v)
     return p[0] === src ? p : []
   }
-  return { t, hop, parent, relay, path, end: Math.max(...t.filter((v) => v < NEVER)) + HOP_TIME }
+  return { t, hop, parent, relay, path }
 }
 
 const pointsVertex = /* glsl */ `
@@ -224,7 +248,9 @@ const pointsVertex = /* glsl */ `
   attribute float aTa;
   attribute float aTb;
   attribute float aRev;
+  attribute float aEnergy;
   uniform float uTime, uSize, uDpr, uCrowd, uMesh, uReveal, uFa, uFb, uDim, uRingSpeed;
+  uniform vec3 uWake;
   uniform vec3 uColA, uColB;
   uniform vec4 uRing[3];
   uniform vec3 uFogColor;
@@ -233,12 +259,18 @@ const pointsVertex = /* glsl */ `
   varying float vA;
   varying float vPx;
 
+  ${BOUNCE}
   float flash(float since) { return since < 0.0 ? 0.0 : exp(-since * 2.6); }
   float held(float since) { return since < 0.0 ? 0.0 : exp(-since * 0.22); }
 
   void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec3 at = position;
+    at.y += bounce(aSeed, aEnergy, position.xz);
+    vec4 mv = modelViewMatrix * vec4(at, 1.0);
     gl_Position = projectionMatrix * mv;
+    // lumina sta in mijlocul telefonului din mana; adancimea ei e adusa putin in fata, ca telefonul sa nu o acopere
+    vec4 ahead = projectionMatrix * (mv + vec4(0.0, 0.0, 0.3, 0.0));
+    gl_Position.z = ahead.z / ahead.w * gl_Position.w;
     float d = max(-mv.z, 0.1);
     float s1 = fract(aSeed * 7.13);
     float tw = 0.7 + 0.3 * sin(uTime * (0.6 + s1 * 2.1) + aSeed * 37.0);
@@ -270,13 +302,20 @@ const pointsVertex = /* glsl */ `
     col = mix(col, uColB, clamp(hb, 0.0, 1.0));
     alpha = max(alpha, 0.85 * max(ha, hb));
 
-    float f = clamp(fl + ring * (0.3 + 0.7 * aApp), 0.0, 1.4);
+    // la incarcare telefoanele sunt stinse; se aprind cand trece peste ele primul ping al pinului
+    float wake = clamp((uTime - uWake.z - length(position.xz - uWake.xy) / ${WAKE_SPEED.toFixed(1)}) / 0.5, 0.0, 1.0);
+    alpha *= 0.07 + 0.93 * wake;
+
+    float f = clamp(fl + ring * (0.3 + 0.7 * aApp) + wake * (1.0 - wake) * 3.2, 0.0, 1.4);
     col = mix(col, vec3(0.93, 1.0, 0.95), clamp(f, 0.0, 1.0));
-    alpha = clamp(alpha + f, 0.0, 1.0);
 
     float size = (1.0 + 0.6 * aApp) * (1.0 + 1.5 * f + 0.35 * rev + 0.5 * max(ha, hb));
     gl_PointSize = clamp(size * uSize * uDpr / d, 2.6 * uDpr, 90.0 * uDpr);
-    vPx = gl_PointSize;
+    vPx = gl_PointSize / uDpr;
+    // de aproape lumineaza ecranul din mana omului; aici ramane doar aura si ce spune povestea
+    float held2 = max(max(ha, hb), rev);
+    alpha *= 1.0 - 0.62 * smoothstep(9.0, 24.0, vPx) * (1.0 - held2);
+    alpha = clamp(alpha + f, 0.0, 1.0);
     float fog = 1.0 - exp(-uFogDensity * uFogDensity * d * d);
     vCol = col;
     vA = alpha * (1.0 - fog * 0.85);
@@ -291,11 +330,7 @@ const pointsFragment = /* glsl */ `
     vec2 p = gl_PointCoord * 2.0 - 1.0;
     float r2 = dot(p, p);
     if (r2 > 1.0) discard;
-    float dot = mix(exp(-r2 * 10.0), 1.0 - smoothstep(0.25, 0.55, sqrt(r2)), smoothstep(6.0, 3.0, vPx));
-    vec2 q = abs(p) - vec2(0.17, 0.32);
-    float box = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.07;
-    float screen = smoothstep(0.05, -0.03, box);
-    float core = mix(dot, screen, smoothstep(9.0, 18.0, vPx));
+    float core = mix(exp(-r2 * 10.0), 1.0 - smoothstep(0.25, 0.55, sqrt(r2)), smoothstep(6.0, 3.0, vPx));
     float halo = exp(-r2 * 3.0) * 0.32;
     float a = (core + halo) * vA;
     gl_FragColor = vec4(vCol * a, 1.0);
@@ -310,6 +345,7 @@ const edgeVertex = /* glsl */ `
   attribute vec2 aFb;
   attribute vec2 aRev;
   attribute float aYou;
+  attribute vec4 aBob;
   uniform vec2 uView;
   uniform float uWidth, uDpr;
   uniform vec3 uFogColor;
@@ -321,9 +357,14 @@ const edgeVertex = /* glsl */ `
   varying vec2 vRev;
   varying float vYou;
   varying float vFog;
+  ${BOUNCE}
   void main() {
-    vec4 ca = projectionMatrix * modelViewMatrix * vec4(aA, 1.0);
-    vec4 cb = projectionMatrix * modelViewMatrix * vec4(aB, 1.0);
+    vec3 A = aA;
+    vec3 B = aB;
+    A.y += bounce(aBob.x, aBob.y, aA.xz);
+    B.y += bounce(aBob.z, aBob.w, aB.xz);
+    vec4 ca = projectionMatrix * modelViewMatrix * vec4(A, 1.0);
+    vec4 cb = projectionMatrix * modelViewMatrix * vec4(B, 1.0);
     if (ca.w < 0.2 || cb.w < 0.2) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
     vec2 sa = ca.xy / ca.w * uView;
     vec2 sb = cb.xy / cb.w * uView;
@@ -338,7 +379,7 @@ const edgeVertex = /* glsl */ `
     vFb = aFb;
     vRev = aRev;
     vYou = aYou;
-    vec4 mv = modelViewMatrix * vec4(mix(aA, aB, position.x), 1.0);
+    vec4 mv = modelViewMatrix * vec4(mix(A, B, position.x), 1.0);
     float d = -mv.z;
     vFog = 1.0 - exp(-uFogDensity * uFogDensity * d * d);
   }
@@ -362,11 +403,13 @@ const edgeFragment = /* glsl */ `
     float head = 0.0;
     float trail = 0.0;
     if (pa > 0.0) {
-      head += pa < 1.2 ? exp(-pow((vS - pa) * 9.0, 2.0)) : 0.0;
+      float da = (vS - pa) * 9.0;
+      head += pa < 1.2 ? exp(-da * da) : 0.0;
       trail = max(trail, step(vS, pa) * exp(-max(pa - 1.0, 0.0) * 0.45));
     }
     if (pb > 0.0) {
-      head += pb < 1.2 ? exp(-pow(((1.0 - vS) - pb) * 9.0, 2.0)) : 0.0;
+      float db = ((1.0 - vS) - pb) * 9.0;
+      head += pb < 1.2 ? exp(-db * db) : 0.0;
       trail = max(trail, step(1.0 - vS, pb) * exp(-max(pb - 1.0, 0.0) * 0.45));
     }
     return vec2(head, trail);
@@ -377,7 +420,8 @@ const edgeFragment = /* glsl */ `
     float soft = smoothstep(0.0, 0.9, across);
     float grow = clamp((uReveal - vRev.x) / max(vRev.y - vRev.x, 0.5), 0.0, 1.0);
     float built = uMesh * step(vS, grow) * step(0.001, grow);
-    float tip = uMesh * (grow > 0.0 && grow < 1.0 ? exp(-pow((vS - grow) * 10.0, 2.0)) : 0.0);
+    float dg = (vS - grow) * 10.0;
+    float tip = uMesh * (grow > 0.0 && grow < 1.0 ? exp(-dg * dg) : 0.0);
     float you = vYou * uYouLinks;
     vec2 a = channel(uFa, vFa);
     vec2 b = channel(uFb, vFb);
@@ -388,6 +432,7 @@ const edgeFragment = /* glsl */ `
     col += uColB * (b.y * 0.62) + vec3(0.95, 1.0, 0.96) * b.x * 1.8;
     float alpha = soft * (1.0 - vFog * 0.9);
     gl_FragColor = vec4(col * alpha, 1.0);
+    #include <colorspace_fragment>
   }
 `
 
@@ -401,7 +446,9 @@ export function createCrowd({ density = 1 } = {}) {
   for (const [name, [x, z]] of Object.entries(SPOTS)) {
     if (name === 'meeting') continue
     special[name] = phones.length
-    phones.push({ x, z, y: name === 'you' ? 1.7 : 1.75, app: true, seed: rand(), isolated: name === 'tent' })
+    const face = name === 'reporter' ? Math.atan2(STAGE.x - x, STAGE.front - z) : name === 'tent' ? Math.PI : rand() * TAU
+    // pinul esti tu, deci acolo nu mai sta un om
+    phones.push({ x, z, y: name === 'you' ? 1.7 : 1.75, app: true, seed: rand(), energy: 0, face, isolated: name === 'tent', figure: name !== 'you' })
   }
 
   const appIdx = []
@@ -443,6 +490,7 @@ export function createCrowd({ density = 1 } = {}) {
   const seed = new Float32Array(count)
   const app = new Float32Array(count)
   const rev = new Float32Array(count)
+  const energy = new Float32Array(count)
   const ta = new Float32Array(count).fill(NEVER)
   const tb = new Float32Array(count).fill(NEVER)
   const you = phones[special.you]
@@ -451,12 +499,14 @@ export function createCrowd({ density = 1 } = {}) {
     seed[i] = p.seed
     app[i] = p.app ? 1 : 0
     rev[i] = Math.hypot(p.x - you.x, p.z - you.z)
+    energy[i] = p.energy
   })
   const pointsGeo = new THREE.BufferGeometry()
   pointsGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
   pointsGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1))
   pointsGeo.setAttribute('aApp', new THREE.BufferAttribute(app, 1))
   pointsGeo.setAttribute('aRev', new THREE.BufferAttribute(rev, 1))
+  pointsGeo.setAttribute('aEnergy', new THREE.BufferAttribute(energy, 1))
   pointsGeo.setAttribute('aTa', new THREE.BufferAttribute(ta, 1))
   pointsGeo.setAttribute('aTb', new THREE.BufferAttribute(tb, 1))
 
@@ -471,6 +521,9 @@ export function createCrowd({ density = 1 } = {}) {
     uColB: { value: new THREE.Color('#D3D8B2') },
     uFogColor: { value: new THREE.Color('#0E110F') },
     uFogDensity: { value: 0.0042 },
+    uBeat: { value: 0 },
+    uBob: { value: 1 },
+    uStageXZ: { value: new THREE.Vector2(STAGE.x, STAGE.front) },
   }
   const pointsMat = new THREE.ShaderMaterial({
     vertexShader: pointsVertex,
@@ -482,6 +535,7 @@ export function createCrowd({ density = 1 } = {}) {
       uDim: { value: 0 },
       uRingSpeed: { value: 15 },
       uRing: { value: [new THREE.Vector4(0, 0, -99, 0), new THREE.Vector4(0, 0, -99, 0), new THREE.Vector4(0, 0, -99, 0)] },
+      uWake: { value: new THREE.Vector3(you.x, you.z, 1e6) },
     },
     transparent: true,
     depthWrite: false,
@@ -501,6 +555,7 @@ export function createCrowd({ density = 1 } = {}) {
   const eB = new Float32Array(E * 3)
   const eRev = new Float32Array(E * 2)
   const eYou = new Float32Array(E)
+  const eBob = new Float32Array(E * 4)
   const eFa = new Float32Array(E * 2).fill(NEVER)
   const eFb = new Float32Array(E * 2).fill(NEVER)
   pairs.forEach(([a, b], i) => {
@@ -516,12 +571,14 @@ export function createCrowd({ density = 1 } = {}) {
     eA.set([p.x, p.y, p.z], i * 3)
     eB.set([q.x, q.y, q.z], i * 3)
     eRev.set([da, db], i * 2)
+    eBob.set([p.seed, p.energy, q.seed, q.energy], i * 4)
     eYou[i] = pairs[i][0] === youNode || pairs[i][1] === youNode ? 1 : 0
   })
   quad.setAttribute('aA', new THREE.InstancedBufferAttribute(eA, 3))
   quad.setAttribute('aB', new THREE.InstancedBufferAttribute(eB, 3))
   quad.setAttribute('aRev', new THREE.InstancedBufferAttribute(eRev, 2))
   quad.setAttribute('aYou', new THREE.InstancedBufferAttribute(eYou, 1))
+  quad.setAttribute('aBob', new THREE.InstancedBufferAttribute(eBob, 4))
   quad.setAttribute('aFa', new THREE.InstancedBufferAttribute(eFa, 2))
   quad.setAttribute('aFb', new THREE.InstancedBufferAttribute(eFb, 2))
   quad.instanceCount = E
@@ -571,25 +628,19 @@ export function createCrowd({ density = 1 } = {}) {
   const node = (ni) => nodes[ni]
   return {
     group,
-    points,
-    edges,
     phones,
-    uniforms: { points: pointsMat.uniforms, edges: edgeMat.uniforms },
+    uniforms: { points: pointsMat.uniforms, edges: edgeMat.uniforms, shared },
     load,
     scenarios,
-    stats: { phones: count, app: nodes.length, links: E },
     you: node(youNode),
-    youLinks: adj[youNode].size,
     ana: node(anaNode),
     reporter: node(reporterNode),
     medic: node(medicNode),
     tent: phones[special.tent],
+    holders: ['hold', 'holdB', 'holdC'].map((name) => phones[special[name]]),
     nodes,
     ids: { you: youNode, ana: anaNode, reporter: reporterNode, medic: medicNode },
-    hops: {
-      ana: scenarios.message.hop[anaNode],
-      medic: scenarios.report.hop[medicNode],
-    },
+    hops: { ana: scenarios.message.hop[anaNode] },
     path: {
       message: scenarios.message.path(anaNode).map(node),
       report: scenarios.report.path(medicNode).map(node),
@@ -599,11 +650,6 @@ export function createCrowd({ density = 1 } = {}) {
       delivered: scenarios.delivered.t[youNode],
       medic: scenarios.report.t[medicNode],
       ack: scenarios.ack.t[reporterNode],
-      messageEnd: scenarios.message.end,
-      reportEnd: scenarios.report.end,
-    },
-    reached(name) {
-      return scenarios[name].t.filter((v) => v < NEVER).length
     },
   }
 }

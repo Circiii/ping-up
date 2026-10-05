@@ -14,23 +14,25 @@ function webgl() {
   }
 }
 
-/** Telefoanele modeste primesc mai putine lumini si o rezolutie mai mica. */
+/** Telefoanele modeste primesc mai putina lume, o rezolutie mai mica si scena fara stralucire. */
 function quality() {
   const coarse = matchMedia('(pointer: coarse)').matches
   const narrow = Math.min(screen.width, screen.height) < 760
   const cores = navigator.hardwareConcurrency || 4
   const memory = navigator.deviceMemory || 4
   const low = (coarse && narrow) || cores <= 4 || memory <= 3
-  return { low, dpr: Math.min(devicePixelRatio || 1, low ? 1.5 : 2), density: low ? 0.55 : 1 }
+  return { low, dpr: Math.min(devicePixelRatio || 1, low ? 1.5 : 1.75), density: low ? 0.45 : 1 }
 }
 
 async function start() {
-  // ecranul LED scrie cu Inter, deci asteptam fontul putin
+  // scena se descarca in timp ce asteptam putin fontul: ecranele LED scriu cu Inter
+  const parts = Promise.all([import('./scene/index.js'), import('./story.js'), import('./nav.js')])
   await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))])
-  const [{ createScene }, { createStory }] = await Promise.all([import('./scene/index.js'), import('./story.js')])
-  const q = quality()
-  const scene = createScene(canvas, q)
-  const story = createStory(scene)
+  const [{ createScene }, { createStory }, { setupJumps }] = await parts
+  const scene = createScene(canvas, quality())
+  const story = createStory(scene, { reduce })
+  // de aici capitolele stau pe loc si isi schimba textul; fara scena raman o pagina obisnuita
+  document.documentElement.classList.add('story-on')
 
   const fit = () => {
     scene.resize(canvas.clientWidth, canvas.clientHeight)
@@ -54,10 +56,44 @@ async function start() {
 
   let y = scrollY
   let last = performance.now()
-  let t = reduce ? 4 : 0
+  // cu miscarea redusa timpul sta pe loc, dupa ce scena s-a aprins toata
+  let t = reduce ? 9 : 0
+
+  function draw(dt) {
+    const state = story.sample(y, t)
+    if (story.sceneVisible(y)) scene.render(t, dt, state)
+  }
+
+  setupJumps({
+    landing: story.landing,
+    reduce,
+    // dupa un salt, camera e deja la locul ei si cadrul nou e desenat pe loc
+    snap() {
+      y = scrollY
+      draw(0)
+    },
+  })
+
+  // daca placa video nu tine pasul: intai rezolutia, apoi stralucirea, apoi multimea rarita la jumatate
   let frames = 0
   let slow = 0
-  let downgraded = false
+  let done = false
+  function adapt(dt) {
+    if (done || ++frames <= 40) return
+    if (dt > 0.031) slow++
+    if (frames < 170) return
+    if (slow < 55) done = true
+    else if (scene.renderer.getPixelRatio() > 1) {
+      scene.renderer.setPixelRatio(1)
+      fit()
+    } else if (scene.hasPost) scene.dropPost()
+    else {
+      scene.thin(0.5)
+      done = true
+    }
+    frames = 0
+    slow = 0
+  }
 
   function frame(now) {
     requestAnimationFrame(frame)
@@ -67,21 +103,8 @@ async function start() {
     if (!reduce) t += dt
     y = reduce ? scrollY : y + (scrollY - y) * (1 - Math.exp(-dt * 9))
     if (Math.abs(scrollY - y) < 0.5) y = scrollY
-    if (!story.sceneVisible(y)) return
-    const state = story.sample(y, t)
-    scene.render(t, dt, state)
-
-    // daca telefonul nu tine pasul, scadem rezolutia o singura data
-    if (!downgraded && ++frames > 30) {
-      if (dt > 0.03) slow++
-      if (frames > 150) {
-        if (slow > 60) {
-          scene.renderer.setPixelRatio(1)
-          scene.resize(canvas.clientWidth, canvas.clientHeight)
-        }
-        downgraded = true
-      }
-    }
+    draw(dt)
+    if (story.sceneVisible(y)) adapt(dt)
   }
   requestAnimationFrame((now) => {
     last = now
@@ -91,3 +114,4 @@ async function start() {
 }
 
 if (webgl()) start()
+else document.documentElement.classList.add('no-scene')

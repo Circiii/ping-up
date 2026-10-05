@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { WAKE_SPEED } from './crowd.js'
 import { bounds, paths, STAGE, UNIT, zones } from './world.js'
 
 // Paleta zonelor din aplicatie (Theme.kt, ZonePairs): culoarea deschisa e numele, cea plina e zona si iconitele.
@@ -60,10 +61,54 @@ function rounded(g, pts, r) {
   g.closePath()
 }
 
+const PAD = 6
+/** Dreptunghiul de sol acoperit de harta si de luminile coapte. */
+const RECT = { x: bounds.x0 - PAD, z: bounds.z0 - PAD, w: bounds.x1 - bounds.x0 + PAD * 2, h: bounds.z1 - bounds.z0 + PAD * 2 }
+
+/**
+ * Luminile pe care constructiile le lasa pe sol (felinare, baruri, rulote, cortul medical), coapte intr-o
+ * singura imagine. Aleile se vad si ele, putin mai deschise decat iarba.
+ */
+function lightTexture(spots) {
+  const W = 1024
+  const H = Math.round((W * RECT.h) / RECT.w)
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const g = c.getContext('2d')
+  const k = W / RECT.w
+  g.fillStyle = '#000'
+  g.fillRect(0, 0, W, H)
+  g.lineCap = 'round'
+  g.lineJoin = 'round'
+  g.strokeStyle = '#0d120e'
+  g.lineWidth = (6.5 / UNIT) * k
+  for (const line of paths) {
+    g.beginPath()
+    line.forEach(([x, z], i) => (i ? g.lineTo((x - RECT.x) * k, (z - RECT.z) * k) : g.moveTo((x - RECT.x) * k, (z - RECT.z) * k)))
+    g.stroke()
+  }
+  g.globalCompositeOperation = 'lighter'
+  for (const s of spots) {
+    const u = (s.x - RECT.x) * k
+    const v = (s.z - RECT.z) * k
+    const r = s.r * k
+    const grad = g.createRadialGradient(u, v, 0, u, v, r)
+    grad.addColorStop(0, withAlpha(s.color, s.a))
+    grad.addColorStop(0.45, withAlpha(s.color, s.a * 0.34))
+    grad.addColorStop(1, withAlpha(s.color, 0))
+    g.fillStyle = grad
+    g.fillRect(u - r, v - r, r * 2, r * 2)
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.flipY = false
+  return tex
+}
+
 /** Harta desenata ca in aplicatie, pe o panza care se aseaza peste sol. */
 function mapTexture() {
-  const pad = 6
-  const rect = { x: bounds.x0 - pad, z: bounds.z0 - pad, w: bounds.x1 - bounds.x0 + pad * 2, h: bounds.z1 - bounds.z0 + pad * 2 }
+  const rect = RECT
   const W = 2048
   const H = Math.round((W * rect.h) / rect.w)
   const c = document.createElement('canvas')
@@ -134,9 +179,13 @@ function mapTexture() {
   return { tex, rect }
 }
 
-export function createGround() {
+export function createGround(spots) {
   const map = mapTexture()
+  const lights = lightTexture(spots)
   const uniforms = {
+    uLightTex: { value: lights },
+    uLights: { value: 1 },
+    uStageCol: { value: new THREE.Color('#EAF6EC') },
     uTime: { value: 0 },
     uPin: { value: new THREE.Vector2() },
     uSpot: { value: 1 },
@@ -150,6 +199,7 @@ export function createGround() {
     uFogColor: { value: new THREE.Color('#0E110F') },
     uFogDensity: { value: 0.0042 },
     uHold: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uWake: { value: new THREE.Vector3(0, 0, 1e6) },
   }
   const mat = new THREE.ShaderMaterial({
     uniforms,
@@ -165,7 +215,10 @@ export function createGround() {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uSpot, uStage, uRingSpeed, uMap, uStageZ, uFogDensity;
+      uniform float uTime, uSpot, uStage, uRingSpeed, uMap, uStageZ, uFogDensity, uLights;
+      uniform sampler2D uLightTex;
+      uniform vec3 uStageCol;
+      uniform vec3 uWake;
       uniform vec2 uPin;
       uniform vec4 uRing[3];
       uniform vec4 uHold;
@@ -188,8 +241,14 @@ export function createGround() {
         vec3 col = vec3(0.0052, 0.0068, 0.0058);
         col *= 0.75 + 0.5 * noise(p * 0.9) * noise(p * 0.13 + 3.0);
 
-        float wash = exp(-pow(p.x / 34.0, 2.0) - pow((p.y - uStageZ - 16.0) / 26.0, 2.0));
-        col += vec3(0.022, 0.034, 0.027) * wash * uStage;
+        // lumina scenei pe primele randuri, in culoarea reflectoarelor
+        vec2 w = vec2(p.x / 34.0, (p.y - uStageZ - 14.0) / 24.0);
+        float wash = exp(-dot(w, w));
+        col += uStageCol * 0.034 * wash * uStage;
+
+        vec2 muv = (p - uMapRect.xy) / uMapRect.zw;
+        bool onMap = muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0;
+        if (onMap) col += texture2D(uLightTex, muv).rgb * 0.34 * uLights;
 
         float dp = length(p - uPin);
         col += vec3(0.11, 0.135, 0.115) * exp(-dp * dp / 9.0) * uSpot;
@@ -206,14 +265,20 @@ export function createGround() {
         }
         col += vec3(0.11, 0.6, 0.24) * ring * 0.55;
 
+        // primul ping, cel care trezeste telefoanele: un front lat si rapid
+        float wakeAge = uTime - uWake.z;
+        if (wakeAge > 0.0 && wakeAge < 6.0) {
+          float dw = length(p - uWake.xy) - wakeAge * ${WAKE_SPEED.toFixed(1)};
+          col += vec3(0.11, 0.6, 0.24) * exp(-dw * dw / 14.0) * (1.0 - wakeAge / 6.0) * 0.5;
+        }
+
         float dh = length(p - uHold.xy);
         float wave = fract(uTime * 0.6 - dh / 9.0);
         float rings = smoothstep(0.0, 0.08, wave) * (1.0 - smoothstep(0.08, 0.22, wave));
         float area = exp(-dh * dh / (uHold.z * uHold.z + 0.01));
         col += vec3(0.6, 0.33, 0.02) * uHold.w * (area * 0.25 + rings * exp(-dh / 5.5) * 0.7);
 
-        vec2 muv = (p - uMapRect.xy) / uMapRect.zw;
-        if (uMap > 0.0 && muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0) {
+        if (uMap > 0.0 && onMap) {
           vec4 m = texture2D(uMapTex, muv);
           col = mix(col, m.rgb, m.a * uMap);
         }
@@ -227,5 +292,5 @@ export function createGround() {
   })
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), mat)
   mesh.rotation.x = -Math.PI / 2
-  return { mesh, uniforms }
+  return { mesh, uniforms, lights, rect: RECT }
 }

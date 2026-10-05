@@ -55,10 +55,6 @@ export function inside(pts, x, z) {
   return hit
 }
 
-export function zoneAt(x, z) {
-  return zones.find((zn) => inside(zn.pts, x, z)) ?? null
-}
-
 const ms = zone['main-stage']
 const s2 = zone['second-stage']
 
@@ -67,14 +63,51 @@ export const STAGE = { x: 0, front: ms.z0 + 0.4, back: ms.z0 - 7.6, half: 16, ba
 /** Scena 2 sta la marginea de est a zonei ei, cu fata spre vest. */
 export const STAGE2 = { x: s2.x1 - 3, z: (s2.z0 + s2.z1) / 2 + 2, half: 7 }
 
-/** Locurile povestii: tu (pinul), Ana, cel care raporteaza, echipa medicala. */
+const tentAt = [(zone.medical.x0 + zone.medical.x1) / 2, (zone.medical.z0 + zone.medical.z1) / 2 + 1]
+
+/**
+ * Locurile povestii: tu (pinul), Ana, cel care raporteaza, echipa medicala si cele trei telefoane de la
+ * marginea multimii care pastreaza raportul cat timp cortul medical e prea departe.
+ */
 export const SPOTS = {
   you: [-9, -21],
   ana: [-15, -5],
   reporter: [9, ms.z0 + 6],
   medic: [33, ms.z0 + 30],
-  tent: [(zone.medical.x0 + zone.medical.x1) / 2, (zone.medical.z0 + zone.medical.z1) / 2 + 1],
+  tent: tentAt,
+  hold: [tentAt[0] - 6, tentAt[1] - 27],
+  holdB: [tentAt[0] - 8.6, tentAt[1] - 28.3],
+  holdC: [tentAt[0] - 4.3, tentAt[1] - 29.4],
   meeting,
+}
+
+/** Unde stau constructiile. Multimea le ocoleste, iar modelele si luminile de pe sol pornesc tot de aici. */
+const food = zone.food
+export const LAYOUT = {
+  bars: [
+    { x: -20, z: 2, w: 4.4, d: 15 },
+    { x: 20, z: 2, w: 4.4, d: 15 },
+    { x: 0, z: 18.2, w: 17, d: 4.4 },
+  ],
+  // doua randuri de rulote, fata in fata: cele din nord servesc spre sud si invers
+  trucks: [0, 1, 2, 3].flatMap((i) => [
+    { x: food.x0 + 8 + i * 11, z: food.z0 + 3.2, face: 1, tone: i },
+    { x: food.x0 + 8 + i * 11, z: food.z1 - 3.2, face: -1, tone: (i + 2) % 4 },
+  ]),
+  // cortul medical sta in spatele telefonului echipei, deschis spre nord si spre vest
+  tent: { x: SPOTS.tent[0] + 0.6, z: SPOTS.tent[1] + 3.9, w: 8.4, d: 6.2 },
+  gates: { xs: [-35, -24, -13], z: zone.entrance.z1 - 2.5 },
+}
+
+/** Adevarat daca punctul cade pe o constructie: acolo nu sta nimeni. */
+export function blocked(x, z, pad = 0.45) {
+  const hit = (cx, cz, hw, hd) => Math.abs(x - cx) < hw + pad && Math.abs(z - cz) < hd + pad
+  for (const b of LAYOUT.bars) if (hit(b.x, b.z, b.w / 2, b.d / 2)) return true
+  for (const t of LAYOUT.trucks) if (hit(t.x, t.z, 3.2, 1.35)) return true
+  const t = LAYOUT.tent
+  if (hit(t.x, t.z, t.w / 2, t.d / 2)) return true
+  for (const gx of LAYOUT.gates.xs) if (hit(gx - 2.6, LAYOUT.gates.z, 0.5, 0.9) || hit(gx + 2.6, LAYOUT.gates.z, 0.5, 0.9)) return true
+  return false
 }
 
 /** Distanta in metri intre doua puncte ale scenei. */
