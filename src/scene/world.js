@@ -26,6 +26,7 @@ export const zones = venue.zones.map((z, index) => {
   return {
     id: z.id,
     name: z.name,
+    type: z.type ?? null,
     index,
     pts,
     cx: xs.reduce((a, b) => a + b, 0) / xs.length,
@@ -39,6 +40,10 @@ export const zones = venue.zones.map((z, index) => {
 
 export const zone = Object.fromEntries(zones.map((z) => [z.id, z]))
 export const meeting = geo(venue.meetingPoint.lat, venue.meetingPoint.lon)
+
+/** Punctele utile (iesiri, toalete, apa, informatii, incarcare) si aleile dintre zone. */
+export const pois = (venue.pois ?? []).map((p) => ({ type: p.type, name: p.name, at: geo(p.lat, p.lon) }))
+export const paths = (venue.paths ?? []).map((line) => line.map((p) => geo(p.lat, p.lon)))
 
 export function inside(pts, x, z) {
   let hit = false

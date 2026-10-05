@@ -5,12 +5,12 @@ export function createTags(layer) {
   const tags = new Map()
   const v = new THREE.Vector3()
 
-  function add(id, html, pos, cls = '') {
+  function add(id, html, pos, cls = '', centered = false) {
     const el = document.createElement('span')
     el.className = `tag ${cls}`.trim()
     el.innerHTML = html
     layer.appendChild(el)
-    const tag = { el, pos: pos.clone(), on: false, x: -1e4, y: -1e4 }
+    const tag = { el, pos: pos.clone(), on: false, x: -1e4, y: -1e4, lift: centered ? '-50%' : '-135%' }
     tags.set(id, tag)
     return tag
   }
@@ -31,7 +31,7 @@ export function createTags(layer) {
       if (x !== tag.x || y !== tag.y) {
         tag.x = x
         tag.y = y
-        tag.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -135%)`
+        tag.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, ${tag.lift})`
       }
     }
   }

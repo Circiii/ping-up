@@ -129,7 +129,7 @@ export function createStory(scene) {
     layout = measure()
     const { mobile, sec } = layout
     const Y = (id, p) => sec[id].top + sec[id].span * p
-    const sh = (dx, my) => (mobile ? [0, my] : [dx, 0])
+    const sh = (dx, my, dy = 0) => (mobile ? [0, my] : [dx, dy])
     const d = (v) => (mobile ? v * 1.42 : v)
 
     const pinT = [you[0], 3.7, you[1]]
@@ -153,8 +153,8 @@ export function createStory(scene) {
       sigilat2: orbit(f, d(7), 12, 21, 34, sh(0, 0.12)),
       asteapta: orbit(waitT, d(58), -34, 52, 40, sh(-0.08, 0.2)),
       asteapta2: orbit(waitT, d(54), -24, 57, 40, sh(-0.08, 0.2)),
-      harta: orbit([4, 0, -2], d(262), 0, 62, 40, sh(-0.21, 0.04)),
-      harta2: orbit([4, 0, -2], d(252), 5, 66, 40, sh(-0.21, 0.04)),
+      harta: orbit([4, 0, -2], d(262), 0, 62, 40, sh(-0.21, 0.04, 0.12)),
+      harta2: orbit([4, 0, -2], d(252), 5, 66, 40, sh(-0.21, 0.04, 0.12)),
       final: orbit(pinT, d(22), -34, 7, 36, sh(-0.22, 0.24)),
       final2: orbit(pinT, d(24), -26, 11, 36, sh(-0.22, 0.24)),
     }
@@ -354,6 +354,7 @@ export function createStory(scene) {
     if (active === 'harta') {
       tags.add('you').add('ana').add('meeting')
       for (const id of ['main-stage', 'second-stage', 'food', 'bar', 'medical', 'entrance', 'camping', 'chill']) tags.add(`zone-${id}`)
+      for (let i = 0; i < scene.poiCount; i++) tags.add(`poi-${i}`)
     }
 
     state.tags = tags

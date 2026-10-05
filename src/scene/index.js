@@ -2,11 +2,11 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { createCrowd } from './crowd.js'
-import { createGround, zoneInk } from './ground.js'
+import { createGround, spotColor, zoneInk, zoneTone } from './ground.js'
 import { createPin } from './pin.js'
 import { beamMaterial, createSet } from './set.js'
 import { createTags } from './tags.js'
-import { meeting, zones } from './world.js'
+import { meeting, pois, zones } from './world.js'
 
 /** Sprite moale, aditiv. */
 function glow(color, size, opacity = 1) {
@@ -67,6 +67,16 @@ function capsule() {
 }
 
 const ease = (t) => t * t * (3 - 2 * t)
+
+// Iconitele hartii din aplicatie (MapArt.kt), pe grila de 24.
+const GLYPHS = {
+  exit: 'M4 3h9v4h-2V5H6v14h5v-2h2v4H4Z M15.4 7l5 5-5 5-1.4-1.4 2.6-2.6H9v-2h7.6L14 8.4Z',
+  water: 'M12 2.5C9 6.6 5.5 10.6 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 10.6 15 6.6 12 2.5Z',
+  wc: 'M5 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0Z M15 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0Z M5 8h4l1 7H9v7H5v-7H4Z M15 8h4l2 8h-2v6h-4v-6h-2Z M11.25 3h1.5v18h-1.5Z',
+  info: 'M10.75 10h2.5v9h-2.5Z M12 4.5a1.75 1.75 0 1 1 0 3.5a1.75 1.75 0 1 1 0-3.5Z',
+  charge: 'M13.5 2L5 13.5h5.5L9.5 22 19 9.5h-5.5Z',
+  medical: 'M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6Z',
+}
 const backOut = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2)
 
 export function createScene(canvas, quality) {
@@ -228,14 +238,22 @@ export function createScene(canvas, quality) {
   tags.add('focus', 'Telefonul unui străin <small>· ttl ' + (8 - focusHop) + '</small>', V(focus.x, focus.y + 0.25, focus.z), 'tag--plain')
   tags.add('tent', '<span class="tag__dot"><svg class="i"><use href="#i-medical"/></svg></span>Punct medical', V(crowd.tent.x, 5.6, crowd.tent.z - 2), 'tag--staff')
   tags.add('holders', '<span class="tag__dot"><svg class="i"><use href="#i-clock"/></svg></span>Raport păstrat', V(holders[0].x, 2.6, holders[0].z), 'tag--alert')
-  tags.add('meeting', '<span class="tag__dot"><svg class="i"><use href="#i-flag"/></svg></span>Punct de întâlnire', V(meeting[0], 10.5, meeting[1]), 'tag--staff')
+  tags.add('meeting', '<span class="tag__dot"><svg class="i"><use href="#i-flag"/></svg></span>Punct de întâlnire', V(meeting[0], 10.5, meeting[1]), 'tag--alert')
   crowd.path.message.slice(1, -1).forEach((n, i) => {
     tags.add(`hop${i + 1}`, `salt ${i + 1}`, V(n.x, n.y + 0.4, n.z), 'tag--plain')
   })
   for (const zn of zones) {
     tags.add(`zone-${zn.id}`, zn.name, V(zn.cx, 0.5, zn.cz + (zn.id === 'main-stage' ? 6 : 0)), 'tag--zone')
-    tags.get(`zone-${zn.id}`).el.style.color = zoneInk(zn.index)
+    tags.get(`zone-${zn.id}`).el.style.color = zoneInk(zoneTone(zn))
   }
+  // punctele utile din harta: cercul colorat cu iconita alba, ca in aplicatie
+  pois.forEach((p, i) => {
+    const glyph = GLYPHS[p.type]
+    if (!glyph) return
+    const tag = tags.add(`poi-${i}`, `<svg viewBox="0 0 24 24"><path d="${glyph}"/></svg>`, V(p.at[0], 0.6, p.at[1]), 'tag--poi', true)
+    tag.el.style.setProperty('--spot', spotColor(p.type))
+    tag.el.title = p.name
+  })
 
   // ---- inelele de ping ----
   let ringSlot = 0
@@ -404,5 +422,6 @@ export function createScene(canvas, quality) {
       return n
     },
     spots: { you, ana: crowd.ana, reporter: crowd.reporter, medic: crowd.medic, tent: crowd.tent, focus, meeting, holders: holdCenter },
+    poiCount: pois.length,
   }
 }

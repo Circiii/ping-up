@@ -1,22 +1,64 @@
 import * as THREE from 'three'
-import { bounds, STAGE, zones } from './world.js'
+import { bounds, paths, STAGE, UNIT, zones } from './world.js'
 
-// Culorile zonelor din aplicatie (Theme.kt, ZonePairs), in ordinea din venue.json:
-// noaptea, zona e culoarea inchisa la 34% peste celula, iar numele e culoarea deschisa.
+// Paleta zonelor din aplicatie (Theme.kt, ZonePairs): culoarea deschisa e numele, cea plina e zona si iconitele.
 const ZONE_PAIRS = [
   ['#E3E3FE', '#3838F5'], ['#DDE7FC', '#1251D3'], ['#D8E8F0', '#086DA0'], ['#CDE4CD', '#067906'],
   ['#EAE0FD', '#661AFF'], ['#F5E3FE', '#9F00F0'], ['#F6D8EC', '#B8057C'], ['#F5D7D7', '#BE0404'],
   ['#FEF5D0', '#836B01'], ['#EAE6D5', '#7D6F40'], ['#D2D2DC', '#4F4F6D'], ['#D7D7D9', '#5C5C5C'],
 ]
-const CELL = [0x1c, 0x21, 0x1d]
+// Harta din aplicatie, noaptea (MapScreen.kt, MapPaint)
+const GRASS = '#111813'
+const GROUND = '#1A221C'
+const ALLEY = '#2B352D'
+const ALLEY_EDGE = '#232C25'
+const FENCE = '#46534A'
+const ACCENT = '#30D158'
 
-function over(hex, alpha) {
-  const n = parseInt(hex.slice(1), 16)
-  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-  return `rgb(${c.map((v, i) => Math.round(v * alpha + CELL[i] * (1 - alpha))).join(',')})`
+// Tonul zonei dupa tip, ca in aplicatie: scena mare, barurile si punctul medical au mereu aceeasi culoare.
+const TYPE_TONE = { food: 8, bar: 1, medical: 7, entrance: 10, camping: 3, chill: 2 }
+const firstStage = zones.findIndex((z) => z.type === 'stage')
+export function zoneTone(zn) {
+  if (zn.type === 'stage') return zn.index === firstStage ? 4 : 5
+  return TYPE_TONE[zn.type] ?? zn.index % ZONE_PAIRS.length
+}
+// Culorile punctelor utile, aceleasi ca cercurile din aplicatie.
+const SPOT_TONE = { medical: 7, exit: 3, water: 2, wc: 10, info: 1, charge: 8 }
+
+export const zoneInk = (tone) => ZONE_PAIRS[tone % ZONE_PAIRS.length][0]
+export const zoneSolid = (tone) => ZONE_PAIRS[tone % ZONE_PAIRS.length][1]
+export const spotColor = (type) => (type === 'meeting' ? '#FF9F0A' : zoneSolid(SPOT_TONE[type] ?? 1))
+
+function mix(hex, base, alpha) {
+  const a = parseInt(hex.slice(1), 16)
+  const b = parseInt(base.slice(1), 16)
+  const ch = (n, s) => (n >> s) & 255
+  const c = [16, 8, 0].map((s) => Math.round(ch(a, s) * alpha + ch(b, s) * (1 - alpha)))
+  return `rgb(${c.join(',')})`
 }
 
-export const zoneInk = (index) => ZONE_PAIRS[index % ZONE_PAIRS.length][0]
+function withAlpha(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
+}
+
+/** Un poligon cu colturile rotunjite, ca zonele din aplicatie. */
+function rounded(g, pts, r) {
+  const n = pts.length
+  g.beginPath()
+  for (let i = 0; i < n; i++) {
+    const [px, py] = pts[(i - 1 + n) % n]
+    const [cx, cy] = pts[i]
+    const [nx, ny] = pts[(i + 1) % n]
+    const a = Math.min(r, Math.hypot(cx - px, cy - py) / 2, Math.hypot(nx - cx, ny - cy) / 2)
+    const sx = cx + ((px - cx) / Math.hypot(px - cx, py - cy)) * a
+    const sy = cy + ((py - cy) / Math.hypot(px - cx, py - cy)) * a
+    if (i) g.lineTo(sx, sy)
+    else g.moveTo(sx, sy)
+    g.arcTo(cx, cy, nx, ny, a)
+  }
+  g.closePath()
+}
 
 /** Harta desenata ca in aplicatie, pe o panza care se aseaza peste sol. */
 function mapTexture() {
@@ -28,27 +70,60 @@ function mapTexture() {
   c.width = W
   c.height = H
   const g = c.getContext('2d')
-  const px = (x, z) => [((x - rect.x) / rect.w) * W, ((z - rect.z) / rect.h) * H]
-  g.fillStyle = 'rgba(14,17,15,0.94)'
-  g.fillRect(0, 0, W, H)
   const k = W / rect.w
+  const px = ([x, z]) => [(x - rect.x) * k, (z - rect.z) * k]
+  const meters = (m) => (m / UNIT) * k
+
+  // in afara incintei, iarba; inauntru, pamantul batut, cu gardul punctat
+  g.fillStyle = withAlpha(GRASS, 0.92)
+  g.fillRect(0, 0, W, H)
+  const site = [[bounds.x0, bounds.z0], [bounds.x1, bounds.z0], [bounds.x1, bounds.z1], [bounds.x0, bounds.z1]].map(px)
+  rounded(g, site, meters(12))
+  g.fillStyle = GROUND
+  g.fill()
+  g.setLineDash([meters(5), meters(4)])
+  g.lineWidth = meters(1.2)
+  g.strokeStyle = FENCE
+  g.stroke()
+  g.setLineDash([])
+
+  // aleile stau sub zone: se vad in spatiile dintre ele
+  g.lineCap = 'round'
   g.lineJoin = 'round'
-  for (const zn of zones) {
+  for (const line of paths) {
     g.beginPath()
-    zn.pts.forEach(([x, z], i) => {
-      const [u, v] = px(x, z)
-      if (i) g.lineTo(u, v)
-      else g.moveTo(u, v)
-    })
-    g.closePath()
-    g.fillStyle = over(ZONE_PAIRS[zn.index % ZONE_PAIRS.length][1], 0.34)
+    line.map(px).forEach(([u, v], i) => (i ? g.lineTo(u, v) : g.moveTo(u, v)))
+    g.lineWidth = meters(7) + meters(2)
+    g.strokeStyle = ALLEY_EDGE
+    g.stroke()
+    g.lineWidth = meters(7)
+    g.strokeStyle = ALLEY
+    g.stroke()
+  }
+
+  for (const zn of zones) {
+    const tone = zoneTone(zn)
+    const solid = zoneSolid(tone)
+    const pts = zn.pts.map(px)
+    const ys = pts.map((p) => p[1])
+    rounded(g, pts.map(([u, v]) => [u, v + meters(2)]), meters(6))
+    g.fillStyle = 'rgba(0,0,0,.35)'
     g.fill()
-    g.lineWidth = 0.9 * k
-    g.strokeStyle = '#1C211D'
+    rounded(g, pts, meters(6))
+    const grad = g.createLinearGradient(0, Math.min(...ys), 0, Math.max(...ys))
+    grad.addColorStop(0, mix(solid, GROUND, 0.48))
+    grad.addColorStop(1, mix(solid, GROUND, 0.3))
+    g.fillStyle = grad
+    g.fill()
+    g.lineWidth = meters(1.4)
+    g.strokeStyle = withAlpha(zoneInk(tone), 0.5)
     g.stroke()
     if (zn.id === 'main-stage') {
-      g.lineWidth = 1.2 * k
-      g.strokeStyle = '#30D158'
+      g.lineWidth = meters(7)
+      g.strokeStyle = withAlpha(ACCENT, 0.28)
+      g.stroke()
+      g.lineWidth = meters(2.4)
+      g.strokeStyle = ACCENT
       g.stroke()
     }
   }
