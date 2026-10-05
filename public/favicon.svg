@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="256" cy="200" r="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#444645"/>
+      <stop offset=".55" stop-color="#151816"/>
+      <stop offset="1" stop-color="#101311"/>
+    </radialGradient>
+    <linearGradient id="ray" x1="0" y1="392" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".4"/>
+    </linearGradient>
+    <linearGradient id="right" x1="0" y1="196" x2="0" y2="468" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#25A345"/>
+      <stop offset="1" stop-color="#17642A"/>
+    </linearGradient>
+    <linearGradient id="left" x1="0" y1="196" x2="0" y2="468" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#224936"/>
+      <stop offset="1" stop-color="#152D21"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="64" x2="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="64" x2="0" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="234.4" cy="163.6" r="115.2" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9FA2A0"/>
+      <stop offset=".5" stop-color="#29302B"/>
+      <stop offset="1" stop-color="#171A18"/>
+    </radialGradient>
+    <clipPath id="tile"><rect width="512" height="512" rx="116"/></clipPath>
+    <clipPath id="pin"><path d="M124 196A132 132 0 1 1 388 196C388 286 318 352 274 410Q256 434 238 410C194 352 124 286 124 196Z"/></clipPath>
+    <clipPath id="body">
+      <path d="M124 240A132 132 0 1 1 388 240C388 330 318 396 274 454Q256 478 238 454C194 396 124 330 124 240Z"/>
+      <path d="M124 218A132 132 0 1 1 388 218C388 308 318 374 274 432Q256 456 238 432C194 374 124 308 124 218Z"/>
+      <rect x="124" y="196" width="264" height="44"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <g fill="url(#ray)">
+      <path d="M198.4 396H204.4L91.6 512H67.6Z"/>
+      <path d="M222.4 396H232.4L183.6 512H143.6Z"/>
+      <path d="M248.6 396H253.1L248.2 512H230.2Z"/>
+      <path d="M268.7 396H279.7L336.8 512H292.8Z"/>
+      <path d="M294.9 396H300.4L401.4 512H379.4Z"/>
+      <path d="M311.8 396H319.8L465.2 512H433.2Z"/>
+    </g>
+  </g>
+  <ellipse cx="256" cy="404" rx="92" ry="13" fill="#000" fill-opacity=".25"/>
+  <g transform="translate(256 232) scale(.8) translate(-256 -265)">
+    <g clip-path="url(#body)">
+      <rect x="-200" y="-200" width="1000" height="1000" fill="url(#right)"/>
+      <rect x="-200" y="-200" width="456" height="1000" fill="url(#left)"/>
+    </g>
+    <g clip-path="url(#pin)">
+      <rect x="-200" y="-200" width="900" height="900" fill="#30D158"/>
+      <path d="M256 196L-90 -4V700H256Z" fill="#2B5E45"/>
+      <path d="M256 196L-90 -4V-300H800L584 -33Z" fill="#D3D8B2"/>
+      <rect x="-200" y="-200" width="900" height="900" fill="url(#sheen)"/>
+      <path d="M124 196A132 132 0 1 1 388 196C388 286 318 352 274 410Q256 434 238 410C194 352 124 286 124 196Z" fill="none" stroke="url(#rim)" stroke-width="12"/>
+    </g>
+    <circle cx="256" cy="196" r="83" fill="#000" fill-opacity=".24"/>
+    <circle cx="256" cy="196" r="72" fill="url(#lens)"/>
+    <ellipse cx="234" cy="166" rx="34" ry="17" transform="rotate(-28 234 166)" fill="#fff" fill-opacity=".42"/>
+    <path d="M211.4 232A57.6 57.6 0 0 0 300.6 232" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>
