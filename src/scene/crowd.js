@@ -13,6 +13,15 @@ export function rng(seed) {
   }
 }
 
+/** Amestecare care depinde doar de seed. Un sort cu comparator la intamplare da alt rezultat in fiecare browser. */
+export function shuffle(list, rand) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+  return list
+}
+
 export const LINK_RANGE = 10.5
 /** Cat de repede trece primul ping peste multime, in unitati pe secunda. */
 export const WAKE_SPEED = 36
@@ -160,12 +169,12 @@ export function link(nodes, rand) {
     inc[b]++
   }
   const free = (a, b) => !adj[a].has(b) && inc[b] < 3 && adj[a].size < 7 && adj[b].size < 7
-  const order = nodes.map((_, i) => i).sort(() => rand() - 0.5)
+  const order = shuffle(nodes.map((_, i) => i), rand)
   for (const a of order) {
     if (nodes[a].isolated) continue
     const cands = near(a)
     const nearest = cands.slice(0, 4)
-    const others = cands.slice(4).sort(() => rand() - 0.5)
+    const others = shuffle(cands.slice(4), rand)
     for (const b of [...nearest.slice(0, 2), ...others, ...nearest.slice(2)]) {
       if (out[a] >= 4) break
       if (free(a, b)) connect(a, b)

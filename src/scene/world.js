@@ -1,5 +1,5 @@
 // Festivalul din scena e harta din aplicatie (venue.json, copiat din proiectul Android), adusa la scara scenei.
-import venue from '../data/venue.json'
+import venue from '../data/venue.json' with { type: 'json' }
 
 export const UNIT = 2.5 // metri intr-o unitate a scenei
 
