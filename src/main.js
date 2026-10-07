@@ -113,5 +113,11 @@ async function start() {
   })
 }
 
-if (webgl()) start()
-else document.documentElement.classList.add('no-scene')
+/** Fara scena (placa video refuza contextul, bucata cu scena nu s-a descarcat) ramane pagina obisnuita. */
+function withoutScene() {
+  document.documentElement.classList.remove('story-on', 'in-story')
+  document.documentElement.classList.add('no-scene')
+}
+
+if (webgl()) start().catch(withoutScene)
+else withoutScene()
