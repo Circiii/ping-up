@@ -48,9 +48,14 @@ function canvasTexture(w, h, draw) {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
-  draw(c.getContext('2d'), w, h)
+  const paint = () => draw(c.getContext('2d'), w, h)
+  paint()
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
+  tex.userData.repaint = () => {
+    paint()
+    tex.needsUpdate = true
+  }
   return tex
 }
 
@@ -277,8 +282,11 @@ export function createProps(quality, rand, time) {
     trussBetween(V(gx0 - 0.6, 8.6, G.z), V(gx1 + 0.6, 8.6, G.z), 0.9))
   const bannerW = 19
   batch.add(dark, box(bannerW + 0.5, 2.9, 0.16, (gx0 + gx1) / 2, 6.6, G.z))
+  const lettering = []
   const banner = (text, facing) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(bannerW, bannerW / 8), new THREE.MeshBasicMaterial({ map: textTexture(text, '#D3D8B2', '#121613'), toneMapped: false }))
+    const tex = textTexture(text, '#D3D8B2', '#121613')
+    lettering.push(tex)
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(bannerW, bannerW / 8), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }))
     m.position.set((gx0 + gx1) / 2, 6.6, G.z + facing * 0.09)
     if (facing < 0) m.rotation.y = Math.PI
     group.add(m)
@@ -502,6 +510,9 @@ export function createProps(quality, rand, time) {
     tentTop: V(T.x, 5.4, T.z),
     setView(dpr) {
       for (const p of [bulbs, lamps, ...poiPoints]) p.uniforms.uDpr.value = dpr
+    },
+    redrawText() {
+      for (const tex of lettering) tex.userData.repaint()
     },
     update(t, s) {
       const p = flagGeo.attributes.position

@@ -374,5 +374,9 @@ export function createStages(quality, time) {
     lens2.uniforms.uDpr.value = dpr
   }
 
-  return { group, update, setView }
+  function redrawText() {
+    for (const wall of [led, ...sideLeds, booth, led2]) wall.redraw()
+  }
+
+  return { group, update, setView, redrawText }
 }

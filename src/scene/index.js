@@ -101,6 +101,10 @@ export function createScene(canvas, quality) {
 
   const crowd = createCrowd({ density: quality.density })
   const set = createSet(crowd.phones, quality)
+  // scena nu asteapta fontul mai mult de o secunda; cand vine, ecranele se rescriu cu el
+  if (document.fonts && !document.fonts.check('800 16px Inter')) {
+    document.fonts.load('800 16px Inter').then(() => set.redrawText(), () => {})
+  }
   const ground = createGround(set.spots)
   const beatU = crowd.uniforms.shared
   const lightsU = crowd.uniforms.points

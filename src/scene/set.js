@@ -150,6 +150,11 @@ export function createSet(phones, quality) {
       props.setView(dpr)
       heaven.starUniforms.uDpr.value = dpr
     },
+    /** Ecranele si bannerele scriu cu Inter; daca fontul a venit dupa ele, le rescriem. */
+    redrawText() {
+      stages.redrawText()
+      props.redrawText()
+    },
     /** Intoarce starea luminilor de scena (culoare si tarie), pentru sol si pentru oameni. */
     update(t, dt, s) {
       time.value = t

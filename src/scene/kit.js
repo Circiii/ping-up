@@ -301,10 +301,15 @@ export function ledWall(width, height, cols, time) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material)
   const ctx = canvas.getContext('2d')
   let current = null
+  let shown = []
   /** Deseneaza textul ecranului: o lista de [text, culoare, marime (parte din inaltime), y (parte din inaltime)]. */
   function show(key, lines) {
     if (key === current) return
     current = key
+    shown = lines
+    paint(lines)
+  }
+  function paint(lines) {
     const W = canvas.width
     const H = canvas.height
     ctx.fillStyle = '#000'
@@ -318,7 +323,9 @@ export function ledWall(width, height, cols, time) {
     }
     tex.needsUpdate = true
   }
-  return { mesh, show, uniforms }
+  /** Acelasi text din nou, de exemplu dupa ce s-a incarcat fontul. */
+  const redraw = () => paint(shown)
+  return { mesh, show, redraw, uniforms }
 }
 
 /** Ghirlande de becuri calde intinse intre doua puncte, cu burta la mijloc. */
