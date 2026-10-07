@@ -101,6 +101,10 @@ export default defineConfig(({ command }) => {
       assetsInlineLimit: 0,
       license: { fileName: 'licente.txt' },
       rolldownOptions: {
+        input: {
+          main: resolve(site, 'index.html'),
+          confidentialitate: resolve(site, 'confidentialitate.html'),
+        },
         output: { postBanner: '/*! Licentele bibliotecilor incluse: licente.txt */' },
       },
       // three.js sta singur in bucata scenei, incarcata dupa text

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Confidențialitate · {{APP_NAME}}</title>
+  <meta name="description" content="Ce date folosește {{APP_NAME}}, unde rămân și cine le poate citi.">
+  <meta name="theme-color" content="#0E110F">
+  <link rel="canonical" href="https://ping-up.org/confidentialitate.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/src/legal.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">
+    <img src="favicon.svg" alt="" width="28" height="28">
+    <span>{{APP_NAME}}</span>
+  </a>
+</header>
+
+<main class="doc">
+  <h1>Confidențialitate</h1>
+  <p class="lead">{{APP_NAME}} nu are server și nu are acces la internet. Ce scrii și ce raportezi rămâne pe telefoane.</p>
+
+  <h2>Aplicația</h2>
+  <ul>
+    <li>Nu cere cont, e-mail sau număr de telefon. La prima pornire telefonul își face singur cheile de criptare.</li>
+    <li>Nu are permisiunea de internet: nu poate trimite nimic nicăieri în afară de telefoanele din jur, prin Bluetooth.</li>
+    <li>Numele ales, prietenii, mesajele și rapoartele stau doar pe telefonul tău. Nu intră în backup-ul Android.
+      Dacă dezinstalezi aplicația, se șterg.</li>
+  </ul>
+
+  <h2>Mesajele</h2>
+  <p>Sunt criptate cap-coadă: le poate citi doar prietenul căruia îi scrii. Telefoanele prin care trec le duc mai
+    departe fără să le poată deschide. Un mesaj care nu a ajuns încă e retrimis de pe telefonul tău cel mult 24 de ore.</p>
+
+  <h2>Rapoartele</h2>
+  <p>Un raport e sigilat pentru cheia echipei festivalului (medici, securitate). Telefoanele de pe drum îl păstrează
+    cel mult 30 de minute, ca să ajungă la echipă, dar nu îl pot citi. Echipa vede categoria, zona și descrierea.
+    Rapoartele sunt anonime dacă nu alegi altfel; doar atunci vede echipa și numele tău.</p>
+  <p>Datele din rapoarte ajung la organizatorul festivalului, care le folosește ca să trimită ajutor. Pentru ce face cu
+    ele după, întreabă organizatorul.</p>
+
+  <h2>Permisiunile</h2>
+  <dl>
+    <div><dt>Bluetooth</dt><dd>legătura cu telefoanele din jur, adică rețeaua.</dd></div>
+    <div><dt>Locația</dt><dd>pe Android 11 și mai vechi, Bluetooth-ul nu poate căuta telefoane fără ea. Zona ta pe
+      hartă vine din GPS; o poți alege și de mână.</dd></div>
+    <div><dt>Camera</dt><dd>scanarea codurilor QR ale prietenilor și ale echipei.</dd></div>
+    <div><dt>Notificările</dt><dd>mesajele noi și notificarea care ține aplicația pornită în fundal.</dd></div>
+  </dl>
+
+  <h2>Site-ul</h2>
+  <p>Nu folosește cookie-uri, statistici sau reclame. Ca orice site, serverele pe care stă (Vercel) primesc adresa IP
+    a celui care îl deschide sau descarcă APK-ul.</p>
+
+  <h2>Contact</h2>
+  <p>Codul aplicației e public: <a href="https://github.com/dulgherustefan/PingUp">github.com/dulgherustefan/PingUp</a>.
+    Întrebările și problemele se scriu <a href="https://github.com/dulgherustefan/PingUp/issues">acolo</a>.</p>
+</main>
+</body>
+</html>
