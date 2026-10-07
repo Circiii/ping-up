@@ -822,10 +822,10 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   .f--sealed b { max-height: 3em; }
 }
 
-/* fara scena 3D (sau fara JavaScript) capitolele sunt pagini obisnuite, una sub alta */
+/* fara scena 3D capitolele sunt pagini obisnuite, una sub alta; fara JavaScript, la fel (noscript din index.html) */
 html:not(.story-on) .scrim { display: none; }
-html:is(.no-scene, :not(.js)) .chapter { height: auto; }
-html:is(.no-scene, :not(.js)) .chapter__stage { position: relative; height: auto; min-height: 100svh; }
+html.no-scene .chapter { height: auto; }
+html.no-scene .chapter__stage { position: relative; height: auto; min-height: 100svh; }
 
 /* telefoane scunde tinute in picioare: textul se strange, ca scena sa pastreze macar o treime din ecran */
 @media (max-width: 900px) and (max-aspect-ratio: 1/1) and (max-height: 720px) {
