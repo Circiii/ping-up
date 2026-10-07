@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
@@ -66,6 +66,18 @@ function sprite() {
   return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">${symbols.join('')}</svg>`
 }
 
+/** licente.txt are licentele bibliotecilor din bundle (de la Vite); aici se adauga fontul si iconitele. */
+const assetLicenses = {
+  name: 'asset-licenses',
+  apply: 'build',
+  writeBundle({ dir }) {
+    const folder = resolve(site, 'licenses')
+    for (const file of readdirSync(folder).sort()) {
+      appendFileSync(resolve(dir, 'licente.txt'), `\n## ${file.replace(/\.txt$/, '')}\n\n${readFileSync(resolve(folder, file), 'utf8')}`)
+    }
+  },
+}
+
 export default defineConfig(({ command }) => {
   if (command === 'build' && !existsSync(resolve(site, 'public', 'ping-up.apk'))) {
     console.warn('Lipseste public/ping-up.apk: butonul de descarcare nu va avea fisier. Ruleaza intai npm run apk.')
@@ -73,6 +85,7 @@ export default defineConfig(({ command }) => {
   return {
     base: './',
     plugins: [
+      assetLicenses,
       {
         name: 'app-tokens',
         transformIndexHtml: (html) => html
@@ -86,8 +99,12 @@ export default defineConfig(({ command }) => {
     build: {
       target: 'es2020',
       assetsInlineLimit: 0,
+      license: { fileName: 'licente.txt' },
+      rolldownOptions: {
+        output: { postBanner: '/*! Licentele bibliotecilor incluse: licente.txt */' },
+      },
       // three.js sta singur in bucata scenei, incarcata dupa text
-      chunkSizeWarningLimit: 700,
+      chunkSizeWarningLimit: 720,
     },
   }
 })
