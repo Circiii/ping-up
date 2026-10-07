@@ -77,6 +77,11 @@ export function createPost(renderer, scene, camera, quality) {
   const finish = new FinishPass()
   composer.addPass(finish)
   return {
+    get bloom() { return bloom.enabled },
+    /** Fara stralucire, dar tot cu imaginea netezita si culoarea finala. */
+    dropBloom() {
+      bloom.enabled = false
+    },
     resize(w, h, dpr) {
       frame.setSize(Math.round(w * dpr), Math.round(h * dpr))
       composer.setPixelRatio(dpr)

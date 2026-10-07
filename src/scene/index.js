@@ -281,7 +281,7 @@ export function createScene(canvas, quality) {
   }
 
   // ---- stralucirea si culoarea finala; fara ele pe telefoanele modeste ----
-  let post = quality.low ? null : createPost(renderer, scene, camera, quality)
+  const post = quality.low ? null : createPost(renderer, scene, camera, quality)
 
   const size = { w: 1, h: 1, dpr: 0 }
   function resize(w, h) {
@@ -448,9 +448,9 @@ export function createScene(canvas, quality) {
     resize,
     render,
     /** Trepte de rezerva cand placa video nu tine pasul: fara stralucire, apoi cu multimea rarita. */
-    get hasPost() { return !!post },
-    dropPost() {
-      post = null
+    get hasBloom() { return !!post?.bloom },
+    dropBloom() {
+      post?.dropBloom()
     },
     thin(share) {
       people.thin(share)

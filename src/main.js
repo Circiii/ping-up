@@ -74,19 +74,21 @@ async function start() {
     },
   })
 
-  // daca placa video nu tine pasul: intai rezolutia, apoi stralucirea, apoi multimea rarita la jumatate
+  // daca placa video nu tine pasul: intai rezolutia, apoi stralucirea, apoi multimea rarita la jumatate.
+  // Economia de baterie (iOS, Android) tine pagina la 30 de cadre pe secunda oricat de buna e placa, deci
+  // abia sub ~25 de cadre e vorba de o placa video slaba.
   let frames = 0
   let slow = 0
   let done = false
   function adapt(dt) {
     if (done || ++frames <= 40) return
-    if (dt > 0.031) slow++
+    if (dt > 0.04) slow++
     if (frames < 170) return
     if (slow < 55) done = true
     else if (scene.renderer.getPixelRatio() > 1) {
       scene.renderer.setPixelRatio(1)
       fit()
-    } else if (scene.hasPost) scene.dropPost()
+    } else if (scene.hasBloom) scene.dropBloom()
     else {
       scene.thin(0.5)
       done = true
