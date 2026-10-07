@@ -297,6 +297,8 @@ export function createScene(canvas, quality) {
 
   const size = { w: 1, h: 1, dpr: 0 }
   function resize(w, h) {
+    // panza ascunsa (0 x 0) nu are ce desena; reluam cand primeste din nou o marime
+    if (!w || !h) return
     // pe telefon bara de adrese apare si dispare; panza ramane la fel, deci nu o realocam
     if (w === size.w && h === size.h && renderer.getPixelRatio() === size.dpr) return
     size.w = w

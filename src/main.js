@@ -45,7 +45,9 @@ async function start() {
     pending = requestAnimationFrame(fit)
   }
   addEventListener('resize', refit)
-  new ResizeObserver(refit).observe(document.querySelector('main'))
+  const watch = new ResizeObserver(refit)
+  watch.observe(document.querySelector('main'))
+  watch.observe(canvas)
 
   if (matchMedia('(pointer: fine)').matches && !reduce) {
     addEventListener('pointermove', (e) => {
