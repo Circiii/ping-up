@@ -801,6 +801,12 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   .f--sealed b { max-height: 3em; }
 }
 
+/* pe cele mai inguste telefoane marimea APK-ului trece sub eticheta, ca butonul sa nu iasa din pagina */
+@media (max-width: 380px) {
+  .btn--dl { flex-wrap: wrap; row-gap: 0; white-space: normal; }
+  .btn--dl small { flex-basis: 100%; padding-left: 32px; }
+}
+
 @media (max-width: 640px) {
   :root { --nav-h: 58px; }
   .hero { align-items: flex-end; padding-bottom: 40px; }
