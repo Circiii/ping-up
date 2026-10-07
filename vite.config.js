@@ -79,9 +79,6 @@ export default defineConfig(({ command }) => {
           .replace(/\{\{(APP_NAME|VERSION|MIN_ANDROID)\}\}/g, (_, key) => tokens[key]),
       },
     ],
-    server: {
-      host: true,
-    },
     build: {
       target: 'es2020',
       assetsInlineLimit: 0,

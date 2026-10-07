@@ -15,6 +15,8 @@ npm install
 npm run dev
 ```
 
+Pe telefon, în aceeași rețea: `npm run dev -- --host`.
+
 ```bash
 npm run build
 ```
