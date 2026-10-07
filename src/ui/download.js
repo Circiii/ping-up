@@ -1,5 +1,3 @@
-import qrcode from 'qrcode-generator'
-
 const APK = 'ping-up.apk'
 
 function mb(bytes) {
@@ -7,7 +5,7 @@ function mb(bytes) {
 }
 
 /** Codul QR desenat ca SVG: module inchise pe fondul deschis, ca pe cardul din aplicatie. */
-function qrSvg(text) {
+function qrSvg(qrcode, text) {
   const qr = qrcode(0, 'M')
   qr.addData(text)
   qr.make()
@@ -42,10 +40,13 @@ export function setupDownload() {
     btn.querySelector('span').textContent = 'Doar pentru Android'
   }
 
+  // codul QR e doar pentru calculator; telefoanele nu descarca generatorul
   if (!android && !ios) {
-    const box = document.querySelector('[data-qr]')
-    box.querySelector('[data-qr-code]').innerHTML = qrSvg(new URL(APK, location.href).href)
-    box.hidden = false
+    import('qrcode-generator').then(({ default: qrcode }) => {
+      const box = document.querySelector('[data-qr]')
+      box.querySelector('[data-qr-code]').innerHTML = qrSvg(qrcode, new URL(APK, location.href).href)
+      box.hidden = false
+    })
   }
 
   fetch('apk.json', { cache: 'no-cache' })
