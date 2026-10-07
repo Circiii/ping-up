@@ -104,6 +104,7 @@ export default defineConfig(({ command }) => {
         input: {
           main: resolve(site, 'index.html'),
           confidentialitate: resolve(site, 'confidentialitate.html'),
+          404: resolve(site, '404.html'),
         },
         output: { postBanner: '/*! Licentele bibliotecilor incluse: licente.txt */' },
       },
