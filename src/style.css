@@ -622,7 +622,9 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 .download h2 { font-size: var(--t-h2); line-height: 1.02; font-weight: 710; letter-spacing: -.03em; text-wrap: balance; }
 .dl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px 28px; }
 .dl__main { display: grid; gap: 12px; justify-items: start; flex: 1 1 18rem; min-width: 0; }
-.btn--dl small { font-size: .875rem; font-weight: 600; opacity: .66; padding-left: 2px; font-variant-numeric: tabular-nums; }
+.btn.is-off { background: var(--cell); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); cursor: default; }
+.btn.is-off:active { scale: 1; }
+.btn--dl small {font-size: .875rem; font-weight: 600; opacity: .66; padding-left: 2px; font-variant-numeric: tabular-nums; }
 .dl__meta { font-size: .875rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .dl__hash { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%; font-size: .75rem; color: var(--ink-3); }
 .dl__hash[hidden] { display: none; }

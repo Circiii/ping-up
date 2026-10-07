@@ -32,6 +32,16 @@ export function setupDownload() {
     }
   }
 
+  // pe iPhone APK-ul nu se poate instala: butonul nu mai descarca degeaba 20 MB
+  if (ios) {
+    const btn = document.querySelector('[data-apk]')
+    btn.removeAttribute('href')
+    btn.removeAttribute('download')
+    btn.setAttribute('aria-disabled', 'true')
+    btn.classList.add('is-off')
+    btn.querySelector('span').textContent = 'Doar pentru Android'
+  }
+
   if (!android && !ios) {
     const box = document.querySelector('[data-qr]')
     box.querySelector('[data-qr-code]').innerHTML = qrSvg(new URL(APK, location.href).href)
