@@ -104,6 +104,21 @@ export function createScene(canvas, quality) {
   const ground = createGround(set.spots)
   const beatU = crowd.uniforms.shared
   const lightsU = crowd.uniforms.points
+
+  // nodul pe care il privim de aproape cand raportul e sigilat
+  const reportPath = crowd.path.report
+  const focusIndex = Math.max(1, Math.min(reportPath.length - 2, Math.floor(reportPath.length / 2)))
+  const focus = reportPath[focusIndex]
+  const reportTimes = reportPath.map((n) => crowd.scenarios.report.t[crowd.nodes.indexOf(n)])
+  const focusHop = crowd.scenarios.report.hop[crowd.nodes.indexOf(focus)]
+
+  // unde vine camera aproape: pinul, telefonul strainului, cortul medical si cei care pastreaza raportul
+  const closeUps = [
+    [crowd.you.x, crowd.you.z, 20],
+    [focus.x, focus.z, 12],
+    [crowd.tent.x, crowd.tent.z, 18],
+    [crowd.holders[0].x, crowd.holders[0].z, 16],
+  ]
   const people = createPeople(crowd.phones, {
     uBeat: beatU.uBeat,
     uBob: beatU.uBob,
@@ -118,7 +133,7 @@ export function createScene(canvas, quality) {
     uWake: lightsU.uWake,
     uLightTex: { value: ground.lights },
     uLightRect: { value: new THREE.Vector4(ground.rect.x, ground.rect.z, ground.rect.w, ground.rect.h) },
-  }, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED })
+  }, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED, near: closeUps })
   people.uniforms.uStage2.value.set(STAGE2.x - 3, STAGE2.z, 0.5)
   scene.add(ground.mesh, set.group, people.mesh, people.solo, crowd.group)
 
@@ -234,13 +249,6 @@ export function createScene(canvas, quality) {
     scene.add(s)
     return s
   })
-
-  // nodul pe care il privim de aproape cand raportul e sigilat
-  const reportPath = crowd.path.report
-  const focusIndex = Math.max(1, Math.min(reportPath.length - 2, Math.floor(reportPath.length / 2)))
-  const focus = reportPath[focusIndex]
-  const reportTimes = reportPath.map((n) => crowd.scenarios.report.t[crowd.nodes.indexOf(n)])
-  const focusHop = crowd.scenarios.report.hop[crowd.nodes.indexOf(focus)]
 
   // ---- etichetele ----
   const tags = createTags(document.querySelector('.labels'))
@@ -379,6 +387,8 @@ export function createScene(canvas, quality) {
     eu.uYouLinks.value = s.youLinks
     eu.uBase.value = s.base
     people.uniforms.uShow.value = clamp01((s.crowd - 0.14) / 0.6)
+    // pe harta oamenii sunt stransi la zero: nu mai are rost sa fie desenati
+    people.mesh.visible = people.uniforms.uShow.value > 0
 
     ground.uniforms.uMap.value = s.map
     ground.uniforms.uLights.value = 1 - 0.75 * s.map

@@ -1,5 +1,6 @@
 // Oamenii din multime: siluete in contralumina, cu telefonul ridicat. Lumina fiecarui telefon e ecranul din mana cuiva.
 import * as THREE from 'three'
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { merge, place } from './kit.js'
 
 /** Unde e telefonul fata de talpi, intr-un om de inaltime 1: dreapta, sus, in fata. */
@@ -207,18 +208,21 @@ const fragment = /* glsl */ `
 
 /**
  * Cate un om pentru fiecare telefon. `shared` aduce ritmul, ceata, harta de lumini de pe sol si starea luminilor
- * din multime, ca ecranele sa se aprinda odata cu ele.
+ * din multime, ca ecranele sa se aprinda odata cu ele. Doar oamenii din `near` ([x, z, raza]), unde camera vine
+ * aproape, primesc silueta fina; restul, vazuti de departe, una cu mai putine fete.
  */
-export function createPeople(phones, shared, { detail = 1, wakeSpeed = 36 } = {}) {
+export function createPeople(phones, shared, { detail = 1, wakeSpeed = 36, near = [] } = {}) {
   // cei cu aplicatia stau primii, restul amestecati: cand scena e rarita, pleaca oameni de peste tot
   const list = phones.filter((p) => p.figure !== false)
   const order = list
     .map((p, i) => [p.app ? -1 : Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1, p])
     .sort((a, b) => a[0] - b[0])
     .map((e) => e[1])
-  const base = personGeometry(detail)
-  const make = (count) => {
+  // varfurile comune ale fetelor netede se calculeaza o singura data
+  const shape = (d) => mergeVertices(personGeometry(d), 1e-4)
+  const make = (base, count) => {
     const geo = new THREE.InstancedBufferGeometry()
+    geo.setIndex(base.index)
     geo.setAttribute('position', base.attributes.position)
     geo.setAttribute('normal', base.attributes.normal)
     geo.setAttribute('aPart', base.attributes.aPart)
@@ -240,18 +244,27 @@ export function createPeople(phones, shared, { detail = 1, wakeSpeed = 36 } = {}
   }
   const material = new THREE.ShaderMaterial({ vertexShader: vertex(wakeSpeed), fragmentShader: fragment, uniforms })
 
-  const geo = make(order.length)
-  const pos = geo.attributes.aPos
-  const who = geo.attributes.aWho
-  order.forEach((p, i) => {
-    pos.setXYZ(i, p.x, p.y, p.z)
-    who.setXYZW(i, p.seed, p.energy, p.face, p.app ? 1 : 0)
+  const close = (p) => near.some(([x, z, r]) => (p.x - x) ** 2 + (p.z - z) ** 2 < r * r)
+  const fine = shape(detail)
+  const coarse = detail ? shape(0) : fine
+  const groups = detail ? [[fine, order.filter(close)], [coarse, order.filter((p) => !close(p))]] : [[fine, order]]
+  const mesh = new THREE.Group()
+  const parts = groups.map(([base, people]) => {
+    const geo = make(base, people.length)
+    const pos = geo.attributes.aPos
+    const who = geo.attributes.aWho
+    people.forEach((p, i) => {
+      pos.setXYZ(i, p.x, p.y, p.z)
+      who.setXYZW(i, p.seed, p.energy, p.face, p.app ? 1 : 0)
+    })
+    const m = new THREE.Mesh(geo, material)
+    m.frustumCulled = false
+    mesh.add(m)
+    return { geo, count: people.length }
   })
-  const mesh = new THREE.Mesh(geo, material)
-  mesh.frustumCulled = false
 
   // trecatorul care duce raportul: acelasi om, mutat in fiecare cadru
-  const soloGeo = make(1)
+  const soloGeo = make(fine, 1)
   soloGeo.attributes.aPos.setUsage(THREE.DynamicDrawUsage)
   soloGeo.attributes.aWho.setUsage(THREE.DynamicDrawUsage)
   const solo = new THREE.Mesh(soloGeo, material)
@@ -264,7 +277,7 @@ export function createPeople(phones, shared, { detail = 1, wakeSpeed = 36 } = {}
     uniforms,
     /** Pastreaza doar o parte din oameni, pentru telefoanele care nu tin pasul. */
     thin(share) {
-      geo.instanceCount = Math.max(1, Math.round(order.length * share))
+      for (const { geo, count } of parts) geo.instanceCount = Math.max(1, Math.round(count * share))
     },
     moveSolo(x, y, z, face) {
       soloGeo.attributes.aPos.setXYZ(0, x, y, z)
