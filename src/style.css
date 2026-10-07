@@ -550,11 +550,13 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 .rail {
   position: fixed; right: 18px; top: 50%; z-index: 20;
   translate: 0 -50%;
-  display: grid; gap: 4px;
   opacity: 0; pointer-events: none;
-  transition: opacity .4s var(--ease);
+  /* ascunsa, iese si din ordinea tastei Tab: altfel focusul ar ajunge pe linkuri care nu se vad */
+  visibility: hidden;
+  transition: opacity .4s var(--ease), visibility 0s linear .4s;
 }
-.rail.is-on { opacity: 1; pointer-events: auto; }
+.rail ol { display: grid; gap: 4px; }
+.rail.is-on { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity .4s var(--ease), visibility 0s; }
 .rail a {
   position: relative;
   display: flex; align-items: center; justify-content: flex-end;
