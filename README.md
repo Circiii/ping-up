@@ -3,7 +3,7 @@
 Pagina de prezentare a aplicației Ping Up, de unde se descarcă APK-ul pentru Android: [ping-up.org](https://ping-up.org). Mesajele sar din telefon în
 telefon, prin Bluetooth, fără internet; site-ul arată cum, pe un festival în 3D.
 
-Codul aplicației: [github.com/dulgherustefan/vnuhack](https://github.com/dulgherustefan/vnuhack).
+Codul aplicației: [github.com/dulgherustefan/PingUp](https://github.com/dulgherustefan/PingUp).
 
 ## Rulare
 
