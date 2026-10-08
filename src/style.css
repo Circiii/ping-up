@@ -425,16 +425,21 @@ html:not(.story-on) :is(.states, .steps) li { color: var(--ink); }
 .phone {
   --k: .7;
   --bezel: 11px;
+  /* rama de aluminiu care se vede pe margine; inauntrul ei, sticla neagra din jurul ecranului */
+  --metal: 2.5px;
+  --r: calc(54px * var(--k) + var(--bezel));
   position: absolute; right: calc(var(--gutter) + 12px); top: 50%;
   width: calc(412px * var(--k) + var(--bezel) * 2);
   height: calc(880px * var(--k) + var(--bezel) * 2);
   padding: var(--bezel);
-  border-radius: calc(54px * var(--k) + var(--bezel));
-  background: linear-gradient(145deg, #2A302C, #0D100E 45%, #1F2421);
+  border-radius: var(--r);
+  /* aluminiul prinde lumina pe muchii, mai ales pe cea dinspre scena */
+  background: linear-gradient(135deg, #626B65 0%, #272C29 13%, #121513 40%, #0E100F 62%, #2A2F2C 86%, #6A746D 100%);
   box-shadow:
-    inset 0 0 0 1.5px rgb(255 255 255 / .09),
-    inset 0 0 0 4px #050605,
-    0 50px 90px -40px rgb(0 0 0 / .9);
+    inset 0 0 0 1px rgb(255 255 255 / .12),
+    0 1px 1px rgb(0 0 0 / .5),
+    0 34px 60px -28px rgb(0 0 0 / .85),
+    0 80px 120px -60px rgb(0 0 0 / .9);
   /* centrarea si marimea stau tot in transform: scrise separat, alaturi de el, se pierd la minificare */
   transform: translateY(-50%) scale(1) perspective(1600px) rotateY(-16deg) rotateX(4deg) rotateZ(.6deg);
 }
@@ -442,8 +447,30 @@ html:not(.story-on) :is(.states, .steps) li { color: var(--ink); }
 html.story-on .phone { opacity: 0; transform: translateY(-50%) scale(.95) perspective(1600px) rotateY(-27deg) rotateX(4deg) rotateZ(.6deg); transition: opacity .2s var(--ease-in), transform .2s var(--ease-in); }
 html.story-on .is-in .phone { opacity: 1; transform: translateY(-50%) scale(1) perspective(1600px) rotateY(-16deg) rotateX(4deg) rotateZ(.6deg); transition: opacity .5s var(--ease-out) .1s, transform .9s var(--ease-out) .1s; }
 
+.phone::before, .phone::after {
+  content: ''; position: absolute; inset: var(--metal);
+  border-radius: calc(var(--r) - var(--metal));
+  pointer-events: none;
+}
+.phone::before {
+  background: #030403;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), inset 0 1px 2px rgb(255 255 255 / .08);
+}
+/* sticla de deasupra ecranului: o reflexie lata, piezisa, si una ingusta in coltul opus */
+.phone::after {
+  z-index: 2;
+  background: linear-gradient(112deg, rgb(255 255 255 / .085) 0%, rgb(255 255 255 / .03) 24%, rgb(255 255 255 / 0) 36%, rgb(255 255 255 / 0) 76%, rgb(255 255 255 / .035) 100%);
+}
+/* butonul de pornire si cel de volum, pe muchia din dreapta */
+.phone__keys, .phone__keys::after {
+  position: absolute; width: 3px; border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, #121513 0 25%, #4E5651 70%, #2C312E);
+}
+.phone__keys { right: -2px; top: 19%; height: 7.5%; }
+.phone__keys::after { content: ''; left: 0; top: 147%; height: 187%; }
+
 .phone__screen {
-  position: relative;
+  position: relative; z-index: 1;
   width: 412px; height: 880px;
   transform: scale(var(--k));
   transform-origin: 0 0;
@@ -454,6 +481,14 @@ html.story-on .is-in .phone { opacity: 1; transform: translateY(-50%) scale(1) p
   font-size: 17px; line-height: 22px; letter-spacing: -.0128em;
 }
 .phone .i { width: 22px; height: 22px; }
+/* camera din ecran, ca la un Pixel, si bara de gesturi de jos */
+.phone__screen::before, .phone__screen::after { content: ''; position: absolute; z-index: 3; left: 50%; pointer-events: none; }
+.phone__screen::before {
+  top: 11px; width: 21px; height: 21px; margin-left: -10.5px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 36%, #33445A 0 1.5px, #111820 3.5px, #050607 6.5px);
+  box-shadow: 0 0 0 1.5px #0A0B0C;
+}
+.phone__screen::after { bottom: 10px; width: 104px; height: 4px; margin-left: -52px; border-radius: 2px; background: rgb(244 246 240 / .6); }
 
 .sb { height: 36px; padding: 10px 26px 0; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .sb__right { display: flex; gap: 5px; align-items: center; }
@@ -496,7 +531,7 @@ html.story-on .is-in .phone { opacity: 1; transform: translateY(-50%) scale(1) p
 .avatar--sms { background: #3B4248; color: #D2D9DE; }
 .avatar__near { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; background: #30D158; box-shadow: 0 0 0 2.5px #0E110F; }
 
-.thread { position: absolute; left: 0; right: 0; bottom: 70px; padding: 0 16px; display: flex; flex-direction: column; gap: 2px; }
+.thread { position: absolute; left: 0; right: 0; bottom: 82px; padding: 0 16px; display: flex; flex-direction: column; gap: 2px; }
 .thread__day { align-self: center; font-size: 12px; font-weight: 600; color: rgb(227 233 222 / .7); margin-bottom: 12px; }
 .b { display: flex; flex-direction: column; max-width: 77%; }
 .b p {
@@ -540,7 +575,7 @@ html.story-on [data-phone]:not(.s-1) .b__queued, html:not(.story-on) .b__queued 
   from { opacity: 0; translate: 0 14px; scale: .96; }
 }
 
-.composer { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 12px; align-items: center; }
+.composer { position: absolute; left: 16px; right: 16px; bottom: 28px; display: flex; gap: 12px; align-items: center; }
 .composer .gbtn { width: 44px; padding: 0; }
 .composer__field {
   flex: 1; height: 44px; padding: 0 12px 0 16px;
@@ -629,7 +664,7 @@ html.story-on [data-phone]:not(.s-1) .b__queued, html:not(.story-on) .b__queued 
 .stepper li.is-on:not(.is-now)::after { background: #30D158; }
 .stepper li.is-now { font-weight: 600; }
 .stepper li.is-now::before { box-shadow: inset 0 0 0 2px #30D158; background: radial-gradient(circle, #30D158 0 4px, transparent 4.5px); }
-.next-foot { position: absolute; left: 16px; right: 16px; bottom: 26px; display: grid; justify-items: center; gap: 4px; }
+.next-foot { position: absolute; left: 16px; right: 16px; bottom: 34px; display: grid; justify-items: center; gap: 4px; }
 .donebtn { width: 100%; height: 52px; border-radius: 999px; display: grid; place-items: center; background: #30D158; color: #0E110F; font-size: 17px; font-weight: 600; }
 .cancel-link { padding: 10px; font-size: 17px; color: #FF453A; }
 
