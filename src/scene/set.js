@@ -1,5 +1,6 @@
 // Decorul: cerul, scenele, constructiile si legaturile telefoanelor cu antena.
 import * as THREE from 'three'
+import { createBackstage } from './backstage.js'
 import { rng } from './crowd.js'
 import { createProps } from './props.js'
 import { BPM, createStages } from './stage.js'
@@ -155,8 +156,9 @@ export function createSet(phones, quality, models = null) {
   const heaven = sky(time)
   const stages = createStages(quality, time, models)
   const props = createProps(quality, rand, time)
+  const backstage = createBackstage(quality, time)
   const cell = cellLinks(phones, props.tower.top, quality.low ? 90 : 170, time)
-  group.add(heaven.group, stages.group, props.group, cell.lines)
+  group.add(heaven.group, stages.group, props.group, backstage.group, cell.lines)
 
   return {
     group,
@@ -166,6 +168,7 @@ export function createSet(phones, quality, models = null) {
     setView(w, h, dpr) {
       stages.setView(w, h, dpr)
       props.setView(dpr)
+      backstage.setView(dpr)
       heaven.starUniforms.uDpr.value = dpr
     },
     /** Ecranele si bannerele scriu cu Inter; daca fontul a venit dupa ele, le rescriem. */

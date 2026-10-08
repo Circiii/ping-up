@@ -211,8 +211,10 @@ export function createStages(quality, time, models = null) {
   roof.computeVertexNormals()
   group.add(new THREE.Mesh(roof, canvas))
 
-  // peretele din spate si rama ecranului
+  // peretele din spate si rama ecranului; de o parte si de alta, si deasupra, cortina neagra: prin scena nu se vede
+  // zona de productie din spate
   batch.add(dark, box(27, 12.4, 0.4, X, 7.6, B + 0.9))
+  batch.add(canvas, place(new THREE.PlaneGeometry(2 * W + 2.8, TOP - 1.8), X, 1.8 + (TOP - 1.8) / 2, B + 0.6))
   for (const sx of [-1, 1]) batch.add(steel, box(0.28, 10.2, 0.3, X + sx * 12.2, 7.3, B + 1.25))
   batch.add(steel, box(24.7, 0.28, 0.3, X, 12.3, B + 1.25), box(24.7, 0.28, 0.3, X, 2.3, B + 1.25))
 
