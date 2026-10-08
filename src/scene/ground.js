@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import { WAKE_SPEED } from './crowd.js'
+import grassUrl from './textures/grass.webp'
+import mudUrl from './textures/mud.webp'
 import { bounds, paths, STAGE, UNIT, zones } from './world.js'
 
 // Paleta zonelor din aplicatie (Theme.kt, ZonePairs): culoarea deschisa e numele, cea plina e zona si iconitele.
@@ -106,6 +108,47 @@ function lightTexture(spots) {
   return tex
 }
 
+/**
+ * Unde e iarba calcata pana la pamant: pe alei, in fata scenelor, la baruri, la mancare si la intrare.
+ * Campingul si zona de relaxare raman mai verzi.
+ */
+const WEAR = { stage: 0.95, food: 0.8, bar: 0.85, entrance: 0.9, medical: 0.55, camping: 0.25, chill: 0.3 }
+function wearTexture() {
+  const W = 512
+  const H = Math.round((W * RECT.h) / RECT.w)
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const g = c.getContext('2d')
+  const k = W / RECT.w
+  const px = ([x, z]) => [(x - RECT.x) * k, (z - RECT.z) * k]
+  g.fillStyle = '#000'
+  g.fillRect(0, 0, W, H)
+  // marginile moi vin din umbra desenului: merge in orice browser, spre deosebire de filtrul de blur
+  g.shadowColor = '#fff'
+  g.shadowBlur = 9
+  for (const zn of zones) {
+    const a = WEAR[zn.type] ?? 0.6
+    g.fillStyle = `rgba(255,255,255,${a})`
+    g.beginPath()
+    zn.pts.map(px).forEach(([u, v], i) => (i ? g.lineTo(u, v) : g.moveTo(u, v)))
+    g.closePath()
+    g.fill()
+  }
+  g.lineCap = 'round'
+  g.lineJoin = 'round'
+  g.strokeStyle = '#fff'
+  g.lineWidth = (8 / UNIT) * k
+  for (const line of paths) {
+    g.beginPath()
+    line.map(px).forEach(([u, v], i) => (i ? g.lineTo(u, v) : g.moveTo(u, v)))
+    g.stroke()
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.flipY = false
+  return tex
+}
+
 /** Harta desenata ca in aplicatie, pe o panza care se aseaza peste sol. */
 function mapTexture() {
   const rect = RECT
@@ -182,7 +225,23 @@ function mapTexture() {
 export function createGround(spots) {
   const map = mapTexture()
   const lights = lightTexture(spots)
+  // iarba si pamantul batut (Poly Haven, CC0); pana vin, solul are un ton mediu
+  const loader = new THREE.TextureLoader()
+  const surface = (url) => {
+    const tex = loader.load(url, () => {
+      if (++loaded === 2) uniforms.uTex.value = 1
+    })
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.anisotropy = 8
+    return tex
+  }
+  let loaded = 0
   const uniforms = {
+    uGrass: { value: surface(grassUrl) },
+    uMud: { value: surface(mudUrl) },
+    uWear: { value: wearTexture() },
+    uTex: { value: 0 },
     uLightTex: { value: lights },
     uLights: { value: 1 },
     uStageCol: { value: new THREE.Color('#EAF6EC') },
@@ -215,8 +274,8 @@ export function createGround(spots) {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uSpot, uStage, uRingSpeed, uMap, uStageZ, uFogDensity, uLights;
-      uniform sampler2D uLightTex;
+      uniform float uTime, uSpot, uStage, uRingSpeed, uMap, uStageZ, uFogDensity, uLights, uTex;
+      uniform sampler2D uLightTex, uGrass, uMud, uWear;
       uniform vec3 uStageCol;
       uniform vec3 uWake;
       uniform vec2 uPin;
@@ -238,21 +297,46 @@ export function createGround(spots) {
 
       void main() {
         vec2 p = vWorld.xz;
-        vec3 col = vec3(0.0052, 0.0068, 0.0058);
-        col *= 0.75 + 0.5 * noise(p * 0.9) * noise(p * 0.13 + 3.0);
-
-        // lumina scenei pe primele randuri, in culoarea reflectoarelor
-        vec2 w = vec2(p.x / 34.0, (p.y - uStageZ - 14.0) / 24.0);
-        float wash = exp(-dot(w, w));
-        col += uStageCol * 0.034 * wash * uStage;
-
         vec2 muv = (p - uMapRect.xy) / uMapRect.zw;
         bool onMap = muv.x > 0.0 && muv.x < 1.0 && muv.y > 0.0 && muv.y < 1.0;
-        if (onMap) col += texture2D(uLightTex, muv).rgb * 0.34 * uLights;
 
+        // solul: iarba, iar unde calca lumea, pamant batut; doua scari ca sa nu se vada repetarea
+        vec3 g1 = texture2D(uGrass, p * 0.31).rgb;
+        vec3 g2 = texture2D(uGrass, p * 0.067 + 0.37).rgb;
+        vec3 grass = mix(g1, g2, 0.35);
+        vec3 mud = texture2D(uMud, p * 0.26).rgb;
+        float wear = onMap ? texture2D(uWear, muv).r : 0.0;
+        wear = clamp(wear + (noise(p * 0.32) - 0.5) * 0.55, 0.0, 1.0);
+        float bare = smoothstep(0.3, 0.8, wear);
+        vec3 albedo = mix(grass, mud, bare);
+        // departe, detaliul se topeste in tonul mediu: fara sclipiri si fara model repetat
+        float far = smoothstep(45.0, 150.0, vDist);
+        albedo = mix(albedo, vec3(0.1, 0.09, 0.062), far);
+        albedo = mix(vec3(0.1, 0.09, 0.062), albedo, uTex);
+
+        // relieful vine din textura: luminozitatea e inaltimea
+        float h = dot(mix(g1, mud, bare), vec3(0.3, 0.59, 0.11)) * (1.0 - far) * uTex;
+        vec3 sx = dFdx(vWorld);
+        vec3 sy = dFdy(vWorld);
+        vec3 up = vec3(0.0, 1.0, 0.0);
+        vec3 r1 = cross(sy, up);
+        vec3 r2 = cross(up, sx);
+        float det = dot(sx, r1);
+        vec3 N = normalize(abs(det) * up - sign(det) * (dFdx(h) * r1 + dFdy(h) * r2) * 1.8);
+
+        // lumina cade pe sol: cerul de noapte, scena din fata, felinarele, reflectorul pinului
+        vec3 light = vec3(0.0052, 0.0068, 0.0058) * (0.75 + 0.5 * noise(p * 0.9) * noise(p * 0.13 + 3.0));
+        vec2 w = vec2(p.x / 34.0, (p.y - uStageZ - 14.0) / 24.0);
+        float wash = exp(-dot(w, w));
+        vec3 toStage = normalize(vec3(-p.x * 0.02, 0.55, uStageZ - p.y));
+        light += uStageCol * 0.034 * wash * uStage * (0.35 + 1.1 * max(dot(N, toStage), 0.0));
+        if (onMap) light += texture2D(uLightTex, muv).rgb * 0.34 * uLights * (0.6 + 0.4 * N.y);
         float dp = length(p - uPin);
-        col += vec3(0.11, 0.135, 0.115) * exp(-dp * dp / 9.0) * uSpot;
-        col += vec3(0.02, 0.03, 0.024) * exp(-dp * dp / 90.0) * uSpot;
+        vec3 toPin = normalize(vec3(uPin.x + 3.0 - p.x, 24.0, uPin.y + 7.0 - p.y));
+        float pinLit = 0.45 + 0.75 * max(dot(N, toPin), 0.0);
+        light += vec3(0.11, 0.135, 0.115) * exp(-dp * dp / 9.0) * uSpot * pinLit;
+        light += vec3(0.02, 0.03, 0.024) * exp(-dp * dp / 90.0) * uSpot * pinLit;
+        vec3 col = albedo * light * 6.0;
 
         float ring = 0.0;
         for (int i = 0; i < 3; i++) {

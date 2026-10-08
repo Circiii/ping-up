@@ -1,0 +1,4 @@
+Texturile solului (src/scene/textures/grass.webp si mud.webp) vin de pe Poly Haven, publicate in domeniul public
+(CC0 1.0): "Grass Ground" si "Brown Mud Leaves 01", https://polyhaven.com/textures, micsorate la 512 px.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
