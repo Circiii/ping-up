@@ -72,7 +72,8 @@ body {
   font-size: var(--t-body);
   line-height: 1.5;
   letter-spacing: -.011em;
-  font-feature-settings: 'cv11', 'ss01';
+  /* a cu o singura bucla, cifre deschise si l cu codita: „Instalează-l” nu mai pare scris cu I mare */
+  font-feature-settings: 'cv05', 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: clip;
@@ -259,9 +260,9 @@ main { position: relative; z-index: 2; }
 .hero__copy { position: relative; max-width: 44rem; display: grid; gap: 26px; justify-items: start; }
 .hero__title {
   font-size: var(--t-hero);
-  line-height: .96;
-  font-weight: 740;
-  letter-spacing: -.035em;
+  line-height: .95;
+  font-weight: 720;
+  letter-spacing: -.028em;
 }
 .hero__title span { display: block; white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
@@ -274,7 +275,18 @@ main { position: relative; z-index: 2; }
 @keyframes rise {
   from { opacity: 0; translate: 0 26px; filter: blur(10px); }
 }
-.lead { font-size: var(--t-lead); line-height: 1.45; color: var(--ink-2); max-width: 33rem; text-wrap: pretty; }
+
+/* Titlurile mari: peste 32px browserul alege singur taietura Display a lui Inter (axa opsz), deja mai stransa,
+   asa ca spatierea ramane la -0.024em. Textul mic (sub 14px) nu se mai strange deloc. */
+.copy h2, .rider__head h2, .download h2, .faq h2 {
+  font-size: var(--t-h2);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -.024em;
+  text-wrap: balance;
+}
+:is(.tag, .f small, .dl__hash, .dl__copy, .packet__sum, .foot__legal, .rail a span, .dl__ios) { letter-spacing: 0; }
+.lead { font-size: var(--t-lead); line-height: 1.45; letter-spacing: -.016em; color: var(--ink-2); max-width: 33rem; text-wrap: pretty; }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .facts { font-size: .9375rem; color: var(--ink-3); }
 
@@ -302,14 +314,7 @@ html.story-on .chapter__stage { position: fixed; inset: 0; height: auto; pointer
 html.story-snap *, html.story-snap *::before, html.story-snap *::after { transition: none !important; }
 
 .copy { position: relative; max-width: 30rem; display: grid; gap: 20px; }
-.copy h2 {
-  font-size: var(--t-h2);
-  line-height: 1.02;
-  font-weight: 710;
-  letter-spacing: -.03em;
-  text-wrap: balance;
-}
-.copy > p { font-size: var(--t-lead); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.copy > p { font-size: var(--t-lead); line-height: 1.5; letter-spacing: -.016em; color: var(--ink-2); text-wrap: pretty; }
 .copy .note { font-size: var(--t-body); color: var(--ink-3); }
 .copy .note [data-mesh-line] { color: var(--ink); font-variant-numeric: tabular-nums; }
 /* starea SMS-ului, pe ecranele unde macheta telefonului nu incape */
@@ -661,8 +666,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 }
 .rider ::selection { background: var(--sage-ink); color: var(--sage); }
 .rider__head { display: grid; gap: 16px; max-width: 44rem; }
-.rider__head h2 { font-size: var(--t-h2); line-height: 1.02; font-weight: 710; letter-spacing: -.03em; }
-.rider__head p { font-size: var(--t-lead); color: var(--sage-ink-2); }
+.rider__head p { font-size: var(--t-lead); letter-spacing: -.016em; color: var(--sage-ink-2); text-wrap: pretty; }
 .rider__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px clamp(24px, 3vw, 48px); }
 .spec { position: relative; }
 .spec::before {
@@ -696,7 +700,6 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   background: linear-gradient(90deg, rgb(14 17 15 / .94) 0%, rgb(14 17 15 / .72) 40%, rgb(14 17 15 / 0) 64%);
 }
 .download__copy { position: relative; max-width: 42rem; display: grid; gap: 28px; }
-.download h2 { font-size: var(--t-h2); line-height: 1.02; font-weight: 710; letter-spacing: -.03em; text-wrap: balance; }
 .dl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px 28px; }
 .dl__main { display: grid; gap: 12px; justify-items: start; flex: 1 1 18rem; min-width: 0; }
 .btn.is-off { background: var(--cell); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); cursor: default; }
@@ -747,7 +750,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 40px clamp(32px, 6vw, 96px);
   border-radius: 32px 32px 0 0;
 }
-.faq h2 { position: sticky; top: calc(var(--nav-h) + 32px); align-self: start; font-size: var(--t-h2); line-height: 1.02; font-weight: 710; letter-spacing: -.03em; }
+.faq h2 { position: sticky; top: calc(var(--nav-h) + 32px); align-self: start; }
 .faq__list { display: grid; }
 .faq details { border-bottom: 1px solid rgb(244 246 240 / .16); }
 .faq summary {
@@ -764,7 +767,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   transition: rotate .3s var(--ease);
 }
 .faq details[open] summary::after { rotate: 45deg; }
-.faq details p { padding: 0 0 24px; max-width: 42rem; color: var(--ink-2); font-size: 1.0625rem; }
+.faq details p { padding: 0 0 24px; max-width: 42rem; color: var(--ink-2); font-size: 1.0625rem; text-wrap: pretty; }
 /* raspunsul se deschide lin acolo unde browserul stie sa animeze inaltimea automata */
 @supports (interpolate-size: allow-keywords) {
   .faq details { interpolate-size: allow-keywords; }
