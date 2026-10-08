@@ -58,7 +58,8 @@ async function start() {
   const net = navigator.connection
   const thinNet = !!net && (/2g|3g/.test(net.effectiveType ?? '') || net.saveData)
   const early = await Promise.race([people, new Promise((r) => setTimeout(() => r(undefined), thinNet ? 0 : 800))])
-  const scene = createScene(canvas, quality(), early ?? null)
+  const q = quality()
+  const scene = createScene(canvas, q, early ?? null)
   if (early === undefined) people.then((m) => scene.upgradePeople(m)).catch(() => {})
   const story = createStory(scene, { reduce })
   // shaderele se compileaza acum, cat panza e inca ascunsa, nu in mijlocul derularii
@@ -83,10 +84,13 @@ async function start() {
   watch.observe(document.querySelector('main'))
   watch.observe(canvas)
 
+  // cat timp n-a miscat nimic: nici pagina, nici cursorul
+  let still = 0
   if (matchMedia('(pointer: fine)').matches && !reduce) {
     addEventListener('pointermove', (e) => {
       scene.pointer.x = (e.clientX / innerWidth) * 2 - 1
       scene.pointer.y = (e.clientY / innerHeight) * 2 - 1
+      still = 0
     }, { passive: true })
   }
 
@@ -114,39 +118,75 @@ async function start() {
   draw(0)
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('story-snap')))
 
-  // daca placa video nu tine pasul: intai rezolutia, apoi stralucirea, apoi multimea rarita la jumatate.
-  // Economia de baterie (iOS, Android) tine pagina la 30 de cadre pe secunda oricat de buna e placa, deci
-  // abia sub ~25 de cadre e vorba de o placa video slaba.
-  let frames = 0
-  let slow = 0
+  // Daca placa video nu tine pasul, calitatea scade in trepte, in orice capitol: intai pixelii (cate un sfert),
+  // apoi stralucirea, apoi multimea rarita la jumatate. Ritmul de baza e cel mai rapid pe care il prinde ecranul,
+  // dar nu sub 60 de cadre: un cadru e intarziat cand trece de o data si jumatate peste el. Economia de baterie
+  // tine unele telefoane la 30 de cadre oricat de buna e placa; acolo baza ramane 30 si calitatea nu scade degeaba.
+  const gaps = []
+  let base = 0
+  let seen = 0
+  let late = 0
+  let settle = 40
   let done = false
-  function adapt(dt) {
-    if (done || ++frames <= 40) return
-    if (dt > 0.04) slow++
-    if (frames < 170) return
-    if (slow < 55) done = true
-    else if (scene.renderer.getPixelRatio() > 1) {
-      scene.renderer.setPixelRatio(1)
-      fit()
-    } else if (scene.hasBloom) scene.dropBloom()
-    else {
-      scene.thin(0.5)
-      done = true
+  function adapt(gap) {
+    if (done) return
+    if (settle > 0) {
+      settle--
+      return
     }
-    frames = 0
-    slow = 0
+    if (!base) {
+      gaps.push(gap)
+      if (gaps.length < 90) return
+      gaps.sort((a, b) => a - b)
+      base = Math.max(1000 / 60, gaps[9])
+      return
+    }
+    if (gap > base * 1.5) late++
+    if (++seen < 120) return
+    if (late > 30) {
+      const dpr = scene.renderer.getPixelRatio()
+      if (dpr > 1) {
+        scene.renderer.setPixelRatio(Math.max(1, dpr - 0.25))
+        fit()
+      } else if (scene.hasBloom) scene.dropBloom()
+      else {
+        scene.thin(0.5)
+        done = true
+      }
+      // cadrele de imediat dupa (panza realocata) nu se pun la socoteala
+      settle = 30
+    }
+    seen = 0
+    late = 0
   }
+
+  // Pe telefoane, cand nu se misca nimic de cateva secunde (cat citesti), scena merge la jumatate de ritm: placa
+  // video se incalzeste mai putin si telefonul nu scade singur frecventa mai tarziu, in mijlocul derularii.
+  // Cu miscarea redusa scena sta pe loc: atunci o redesenam doar din cand in cand.
+  const rest = reduce ? 30 : q.low ? 2 : 1
+  let skipped = 0
+  let held = 0
+  let lastScroll = scrollY
 
   function frame(now) {
     requestAnimationFrame(frame)
-    const dt = Math.min(0.05, (now - last) / 1000)
+    const gap = now - last
+    const dt = Math.min(0.05, gap / 1000)
     last = now
     if (document.hidden) return
     if (!reduce) t += dt
     y = reduce ? scrollY : y + (scrollY - y) * (1 - Math.exp(-dt * 9))
     if (Math.abs(scrollY - y) < 0.5) y = scrollY
-    draw(dt)
-    if (story.sceneVisible(y)) adapt(dt)
+    still = scrollY === lastScroll && y === scrollY ? still + gap : 0
+    lastScroll = scrollY
+    const idle = still > 2500
+    if (idle && ++skipped % rest) {
+      held += dt
+      return
+    }
+    draw(dt + held)
+    held = 0
+    if (!idle && story.sceneVisible(y)) adapt(gap)
   }
   requestAnimationFrame((now) => {
     last = now
