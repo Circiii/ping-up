@@ -165,6 +165,17 @@ export function createPost(renderer, scene, camera, quality) {
   const finish = new FinishPass()
   composer.addPass(finish)
   return {
+    /** Tinta in care se deseneaza scena: shaderele ei se compileaza pentru ea (fara tonuri, cu culori liniare). */
+    target: frame,
+    /** Un cadru cu toti pasii porniti, ca sa li se compileze shaderele inainte de prima derulare. */
+    warm() {
+      const d = dof.enabled
+      const b = bloom.enabled
+      dof.enabled = bloom.enabled = true
+      composer.render(0)
+      dof.enabled = d
+      bloom.enabled = b
+    },
     get bloom() { return bloom.enabled },
     /** Fara stralucire si fara adancime de camp, dar tot cu imaginea netezita si culoarea finala. */
     dropBloom() {

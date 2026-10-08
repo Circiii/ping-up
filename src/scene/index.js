@@ -480,15 +480,23 @@ export function createScene(canvas, quality, models = null) {
     resize,
     render,
     /**
-     * Compileaza dinainte shaderele tuturor obiectelor, si ale celor ascunse acum (harta, parul celor departe,
-     * trecatorul), si urca texturile pe placa video: altfel s-ar face la prima aparitie, cu o sacadare in derulare.
+     * Pregateste dinainte, cat panza e inca ascunsa, tot ce ar face placa video la prima aparitie a unui obiect, cu
+     * o sacadare in mijlocul derularii: compileaza shaderele tuturor obiectelor (si ale celor ascunse acum: harta,
+     * parul celor departe, trecatorul), urca texturile si, cu `full`, deseneaza o data totul, ca sa urce si
+     * geometriile celor care nu intra in primul cadru (spatele scenei, roata, oamenii de aproape).
      */
-    async warm() {
+    async warm(full = true) {
       const hidden = []
+      const culled = []
       scene.traverse((o) => {
-        if (o.visible) return
-        hidden.push(o)
-        o.visible = true
+        if (!o.visible) {
+          hidden.push(o)
+          o.visible = true
+        }
+        if (full && o.frustumCulled) {
+          culled.push(o)
+          o.frustumCulled = false
+        }
       })
       const textures = new Set()
       scene.traverse((o) => {
@@ -496,13 +504,28 @@ export function createScene(canvas, quality, models = null) {
           if (!m) continue
           for (const v of Object.values(m)) if (v?.isTexture) textures.add(v)
           for (const u of Object.values(m.uniforms ?? {})) if (u.value?.isTexture) textures.add(u.value)
+          for (const t of m.userData.textures ?? []) textures.add(t)
         }
       })
+      // shaderele depind de tinta: cu post-procesare scena se deseneaza intr-o tinta fara tonuri si cu culori
+      // liniare, deci se compileaza pentru ea, nu pentru ecran (altfel s-ar compila din nou la prima aparitie)
+      const target = post?.target ?? null
+      renderer.setRenderTarget(target)
       // programele se aleg pe loc, la apel; doar asteptarea compilarii ramane pentru mai tarziu
       const ready = renderer.compileAsync(scene, camera)
-      for (const o of hidden) o.visible = false
+      renderer.setRenderTarget(null)
+      if (!full) for (const o of hidden) o.visible = false
       for (const t of textures) renderer.initTexture(t)
       await Promise.race([ready, new Promise((r) => setTimeout(r, 2000))])
+      if (full) {
+        // panza si tintele au inca marimea de la pornire, de cativa pixeli: cadrul acesta costa doar varfurile
+        renderer.setRenderTarget(target)
+        renderer.render(scene, camera)
+        renderer.setRenderTarget(null)
+        post?.warm()
+        for (const o of hidden) o.visible = false
+        for (const o of culled) o.frustumCulled = true
+      }
     },
     /** Trepte de rezerva cand placa video nu tine pasul: fara stralucire, apoi cu multimea rarita. */
     get hasBloom() { return !!post?.bloom },
@@ -527,7 +550,8 @@ export function createScene(canvas, quality, models = null) {
       people = next
       old.mesh.traverse((o) => o.geometry?.dispose())
       old.solo.geometry.dispose()
-      await this.warm()
+      // scena se vede deja: doar shaderele si atlasul, fara cadrul de incalzire, care ar desena peste ecran
+      await this.warm(false)
     },
     /** cate telefoane cu aplicatia sunt in raza data, de la tine */
     meshCount(radius) {

@@ -219,12 +219,18 @@ export function createStages(quality, time, models = null) {
   batch.add(steel, box(24.7, 0.28, 0.3, X, 12.3, B + 1.25), box(24.7, 0.28, 0.3, X, 2.3, B + 1.25))
 
   const led = ledWall(24, 9.6, 150, time)
+  led.prepare({ logo: LED_TEXT.logo, mesh: LED_TEXT.mesh, nosignal: LED_TEXT.nosignal })
+  led.show('logo', LED_TEXT.logo)
   led.mesh.position.set(X, 7.3, B + 1.3)
   group.add(led.mesh)
 
   const sideLeds = []
+  // cele doua ecrane laterale arata acelasi lucru: aceleasi texturi
+  const sideImages = new Map()
   for (const sx of [-1, 1]) {
-    const s = ledWall(5.4, 8.2, 36, time)
+    const s = ledWall(5.4, 8.2, 36, time, sideImages)
+    s.prepare({ side: LED_TEXT.side, 'side-off': LED_TEXT['side-off'] })
+    s.show('side', LED_TEXT.side)
     s.mesh.position.set(X + sx * (W + 6.2), 8.4, F - 0.9)
     s.mesh.rotation.y = -sx * 0.2
     group.add(s.mesh)
@@ -424,6 +430,8 @@ export function createStages(quality, time, models = null) {
   group.add(new THREE.Mesh(roof2, canvas))
   batch.add(dark, box(0.35, 6, 2 * h2, x2 + 2.75, 4.6, z2))
   const led2 = ledWall(11.4, 4.8, 72, time)
+  led2.prepare({ logo: LED_TEXT.logo, nosignal: LED_TEXT.nosignal })
+  led2.show('logo', LED_TEXT.logo)
   led2.mesh.position.set(x2 + 2.5, 4.9, z2)
   led2.mesh.rotation.y = -Math.PI / 2
   group.add(led2.mesh)
@@ -549,7 +557,7 @@ export function createStages(quality, time, models = null) {
   }
 
   function redrawText() {
-    for (const wall of [led, ...sideLeds, booth, led2]) wall.redraw()
+    for (const wall of [led, sideLeds[0], booth, led2]) wall.redraw()
     fasciaTex.userData.repaint()
   }
 

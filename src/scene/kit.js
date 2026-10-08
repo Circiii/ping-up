@@ -259,16 +259,17 @@ export function ribbons(count, color, width = 1.4) {
 /**
  * Ecran LED: o retea de becuri care arata ce scrie pe o panza, peste inelele de ping care pleaca din centru.
  * Cand semnalul cade, imaginea se rupe pe orizontala si bucati de ecran se sting.
+ * Fiecare imagine a ecranului se deseneaza o singura data si ramane pe placa video: la schimbarea capitolului
+ * ecranul doar trece la alta textura, fara sa redeseneze si sa urce o panza in mijlocul derularii.
+ * `images` lasa doua ecrane la fel (cele laterale) sa imparta aceleasi texturi.
  */
-export function ledWall(width, height, cols, time) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 1024
-  canvas.height = Math.max(64, Math.round((1024 * height) / width))
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.colorSpace = THREE.SRGBColorSpace
+export function ledWall(width, height, cols, time, images = new Map()) {
   const rows = Math.round((cols * height) / width)
+  // shaderul citeste fiecare bec din mijlocul lui: 4 pixeli pe bec ajung, restul panzei nu s-ar vedea niciodata
+  const W = cols * 4
+  const H = rows * 4
   const uniforms = {
-    uTex: { value: tex },
+    uTex: { value: null },
     uCells: { value: new THREE.Vector2(cols, rows) },
     uBright: { value: 1 },
     uTime: time,
@@ -320,33 +321,57 @@ export function ledWall(width, height, cols, time) {
     toneMapped: false,
   })
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material)
-  const ctx = canvas.getContext('2d')
-  let current = null
-  let shown = []
-  /** Deseneaza textul ecranului: o lista de [text, culoare, marime (parte din inaltime), y (parte din inaltime)]. */
-  function show(key, lines) {
-    if (key === current) return
-    current = key
-    shown = lines
-    paint(lines)
-  }
-  function paint(lines) {
-    const W = canvas.width
-    const H = canvas.height
+  // texturile ecranului, ca sa le poata urca scena pe placa video inainte de prima derulare
+  material.userData.textures = []
+
+  /** Textul unei imagini: o lista de [text, culoare, marime (parte din inaltime), y (parte din inaltime)]. */
+  function paint(img) {
+    const ctx = img.canvas.getContext('2d')
     ctx.fillStyle = '#000'
     ctx.fillRect(0, 0, W, H)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    for (const [text, color, size, y = 0.5] of lines) {
+    for (const [text, color, size, y = 0.5] of img.lines) {
       ctx.fillStyle = color
       ctx.font = `800 ${Math.round(size * H)}px Inter, system-ui, sans-serif`
       ctx.fillText(text, W / 2, y * H, W * 0.94)
     }
-    tex.needsUpdate = true
+    img.tex.needsUpdate = true
   }
-  /** Acelasi text din nou, de exemplu dupa ce s-a incarcat fontul. */
-  const redraw = () => paint(shown)
-  return { mesh, show, redraw, uniforms }
+  function image(key, lines) {
+    let img = images.get(key)
+    if (!img) {
+      const canvas = document.createElement('canvas')
+      canvas.width = W
+      canvas.height = H
+      const tex = new THREE.CanvasTexture(canvas)
+      tex.colorSpace = THREE.SRGBColorSpace
+      // fiecare bec citeste un singur punct, mereu la aceeasi marime: nu are nevoie de mipmap-uri
+      tex.generateMipmaps = false
+      tex.minFilter = THREE.LinearFilter
+      img = { canvas, tex, lines }
+      paint(img)
+      images.set(key, img)
+    }
+    if (!material.userData.textures.includes(img.tex)) material.userData.textures.push(img.tex)
+    return img
+  }
+
+  let current = null
+  function show(key, lines) {
+    if (key === current) return
+    current = key
+    uniforms.uTex.value = image(key, lines).tex
+  }
+  /** Deseneaza dinainte toate imaginile pe care le va arata ecranul ({ cheie: linii }). */
+  function prepare(states) {
+    for (const [key, lines] of Object.entries(states)) image(key, lines)
+  }
+  /** Aceleasi imagini din nou, de exemplu dupa ce s-a incarcat fontul. */
+  const redraw = () => {
+    for (const img of images.values()) paint(img)
+  }
+  return { mesh, show, prepare, redraw, uniforms }
 }
 
 /** Ghirlande de becuri calde intinse intre doua puncte, cu burta la mijloc. */
