@@ -96,6 +96,34 @@ function navPill() {
   update()
 }
 
+/**
+ * Titlurile capitolelor: fiecare cuvant urca pe rand din spatele unei margini (style.css). Textul ramane acelasi
+ * pentru cititoarele de ecran; doar e impartit in cuvinte.
+ */
+function words() {
+  for (const h of document.querySelectorAll('.copy h2')) {
+    if (h.children.length) continue
+    const parts = h.textContent.split(/(\s+)/)
+    h.textContent = ''
+    let i = 0
+    for (const part of parts) {
+      if (!part) continue
+      if (/^\s+$/.test(part)) {
+        h.append(part)
+        continue
+      }
+      const w = document.createElement('span')
+      w.className = 'w'
+      const inner = document.createElement('span')
+      inner.textContent = part
+      inner.style.setProperty('--i', i++)
+      w.append(inner)
+      h.append(w)
+    }
+    h.classList.add('is-split')
+  }
+}
+
 /** Raspunsurile se deschid si se inchid pe arc, la fel in orice browser. */
 function faq() {
   document.querySelector('.faq')?.classList.add('is-js')
@@ -189,6 +217,7 @@ function tilt() {
 
 export function setupMotion() {
   const fine = matchMedia('(pointer: fine)').matches
+  words()
   navPill()
   faq()
   // pe telefoane fara blur: e scump de desenat pe placi video mici

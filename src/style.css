@@ -380,6 +380,17 @@ html.story-on .is-in .copy > * { opacity: 1; translate: 0 0; transition: opacity
 html.story-on .is-in .copy > :nth-child(2) { transition-delay: .07s; }
 html.story-on .is-in .copy > :nth-child(3) { transition-delay: .14s; }
 html.story-on .is-in .copy > :nth-child(4) { transition-delay: .2s; }
+/* titlul nu se stinge: cuvintele lui urca pe rand din spatele unei margini si pleaca tot in sus (motion.js le
+   imparte). Marginea lasa loc diacriticelor de deasupra si cozilor de dedesubt. */
+.copy h2.is-split .w { display: inline-block; overflow: clip; padding: .16em .03em .12em; margin: -.16em -.03em -.12em; vertical-align: top; }
+.copy h2.is-split .w > span { display: inline-block; }
+/* toate titlurile stau unul peste altul pe ecran: al unui capitol inactiv dispare de tot, dupa ce i-au iesit
+   cuvintele, ca nicio diacritica sa nu treaca prin marginea altui titlu */
+html.story-on .copy h2.is-split { translate: none; opacity: 0; transition: opacity 0s linear .3s; }
+html.story-on .is-in .copy h2.is-split { opacity: 1; transition: opacity 0s; }
+html.story-on .copy h2.is-split .w > span { translate: 0 130%; transition: translate var(--exit) var(--ease-out); }
+html.story-on .is-past .copy h2.is-split .w > span { translate: 0 -130%; }
+html.story-on .is-in .copy h2.is-split .w > span { translate: 0 0; transition: translate .9s var(--ease-out) calc(var(--i) * 32ms); }
 
 /* Starea mesajului si pasii raportului, ca linia din aplicatie: bifa plina la ce s-a facut, un inel care pulseaza
    la pasul curent, iar linia dintre ele se umple de verde pe masura ce mesajul inainteaza. Linia de sub un pas
