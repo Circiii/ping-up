@@ -110,6 +110,8 @@ export function createStory(scene, { reduce = false } = {}) {
     carryLeft: el('[data-carry-left]'),
     rail: all('[data-rail]'),
     railBox: el('.rail'),
+    railFill: el('.rail__fill'),
+    bar: el('.progress i'),
     nav: el('[data-nav]'),
     root: document.documentElement,
   }
@@ -251,35 +253,70 @@ export function createStory(scene, { reduce = false } = {}) {
     fa: -10, fb: -10, led: 'logo', tags: new Set(),
   }
 
-  function sample(y, t) {
+  const sectionAt = (y) => {
+    let id = 'acasa'
+    for (const s of SECTIONS) {
+      const lead = LATER.has(s) ? layout.vh * 0.05 : layout.vh * 0.5
+      if (y + lead >= layout.sec[s].top) id = s
+    }
+    return id
+  }
+
+  // cat a parcurs cititorul din poveste, si incotro merge: bara de sus se retrage cand cobori prin poveste
+  let shownProgress = -1
+  let lastExact = 0
+  let travel = 0
+  // cu mouse-ul, bara revine si cand cursorul urca spre marginea de sus
+  let nearTop = false
+  if (matchMedia('(pointer: fine)').matches) addEventListener('pointermove', (e) => { nearTop = e.clientY < 90 }, { passive: true })
+
+  /**
+   * Starea povestii la derularea `y` (netezita: camera si scena o urmeaza lin) si `exact` (derularea adevarata:
+   * textele, sina si bara de sus raspund pe loc, fara sa astepte camera).
+   */
+  function sample(y, t, exact = y) {
     if (!layout) build()
     for (const [k, tr] of Object.entries(tracks)) state[k] = tr.at(y)
     state.cam = place(state.cam)
 
     // Sectiunea curenta. Capitolele stau pe loc pana la capat, deci urmatorul incepe cand ajunge sus;
     // restul paginii curge, deci acolo conteaza ce a trecut de mijlocul ecranului.
-    let active = 'acasa'
-    for (const id of SECTIONS) {
-      const lead = LATER.has(id) ? layout.vh * 0.05 : layout.vh * 0.5
-      if (y + lead >= layout.sec[id].top) active = id
-    }
-    if (active !== current) {
-      current = active
-      dom.rail.forEach((a) => a.classList.toggle('is-on', a.dataset.rail === active))
-      dom.railBox.classList.toggle('is-on', CHAPTERS.includes(active))
+    const active = sectionAt(y)
+    const reading = sectionAt(exact)
+    if (reading !== current) {
+      current = reading
+      dom.rail.forEach((a) => a.classList.toggle('is-on', a.dataset.rail === reading))
+      dom.railBox.classList.toggle('is-on', CHAPTERS.includes(reading))
     }
     // textul fiecarui capitol sta pe loc cat timp camera e la cadrul lui; intra de jos si iese in sus
     CHAPTERS.forEach((id, i) => {
-      const p = progress(id, y)
+      const p = progress(id, exact)
       const from = i === 0 ? 0.04 : 0.08
       // ultimul capitol ramane pana il acopera foaia rider-ului
-      const past = i === CHAPTERS.length - 1 ? y >= layout.storyEnd : p >= 0.95
+      const past = i === CHAPTERS.length - 1 ? exact >= layout.storyEnd : p >= 0.95
       nodes[id].classList.toggle('is-in', p >= from && !past)
       nodes[id].classList.toggle('is-past', past)
     })
-    const inStory = y > layout.sec.cade.top - layout.vh * 0.35 && y < layout.sec.rider.top
+    const inStory = exact > layout.sec.cade.top - layout.vh * 0.35 && exact < layout.sec.rider.top
     dom.root.classList.toggle('in-story', inStory)
-    dom.nav.classList.toggle('is-solid', y > 40)
+    dom.nav.classList.toggle('is-solid', exact > 40)
+
+    // cat din poveste s-a citit: linia din sina si bara subtire de pe telefon; scriem doar cand se schimba vizibil
+    const story = Math.min(1, Math.max(0, (exact - layout.sec.cade.top) / (layout.storyEnd - layout.sec.cade.top)))
+    if (Math.abs(story - shownProgress) > 0.001) {
+      shownProgress = story
+      const k = `scaleY(${story.toFixed(4)})`
+      if (dom.railFill) dom.railFill.style.transform = k
+      if (dom.bar) dom.bar.style.transform = `scaleX(${story.toFixed(4)})`
+    }
+    // bara de sus: cobori prin poveste, se retrage; urci putin, revine. Intre ele, un prag, ca sa nu clipeasca.
+    const dy = exact - lastExact
+    lastExact = exact
+    if (Math.sign(dy) !== Math.sign(travel)) travel = 0
+    travel += dy
+    const tuck = inStory && !nearTop && !dom.nav.classList.contains('is-open') && !dom.nav.contains(document.activeElement)
+    if (!tuck || travel < -40) dom.nav.classList.remove('is-tucked')
+    else if (travel > 120) dom.nav.classList.add('is-tucked')
 
     state.chA = null
     state.chB = null

@@ -96,7 +96,7 @@ async function start() {
   let t = reduce ? 9 : 0
 
   function draw(dt) {
-    const state = story.sample(y, t)
+    const state = story.sample(y, t, scrollY)
     if (story.sceneVisible(y)) scene.render(t, dt, state)
   }
 
