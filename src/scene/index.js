@@ -332,6 +332,13 @@ export function createScene(canvas, quality, models = null) {
 
   const look = new THREE.Vector3()
   const pointer = { x: 0, y: 0, sx: 0, sy: 0 }
+  // culorile valurilor vin din poveste ca text: fiecare se citeste o singura data, nu in fiecare cadru
+  const tints = new Map()
+  const tint = (hex) => {
+    let c = tints.get(hex)
+    if (!c) tints.set(hex, (c = new THREE.Color(hex)))
+    return c
+  }
   const tmp = new THREE.Vector3()
   const right = new THREE.Vector3()
   const stageAt = [STAGE.x, STAGE.front]
@@ -400,8 +407,8 @@ export function createScene(canvas, quality, models = null) {
     crowd.load('b', s.chB)
     pu.uFa.value = s.fa
     pu.uFb.value = s.fb
-    pu.uColA.value.set(s.colA)
-    pu.uColB.value.set(s.colB)
+    pu.uColA.value.copy(tint(s.colA))
+    pu.uColB.value.copy(tint(s.colB))
     eu.uYouLinks.value = s.youLinks
     eu.uBase.value = s.base
     people.uniforms.uShow.value = clamp01((s.crowd - 0.14) / 0.6)

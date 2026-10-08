@@ -14,21 +14,29 @@ export function createTags(layer) {
     const shift = lift === true ? '-50%' : lift || '-135%'
     // numele unei zone poate sta oriunde pe ea; celelalte etichete arata un punct anume
     const flex = cls.includes('tag--zone')
-    const tag = { el, pos: pos.clone(), on: false, x: -1e4, y: -1e4, lift: shift, shift: parseFloat(shift) / 100, w: 0, h: 0, flex }
+    const tag = { id, el, pos: pos.clone(), on: false, x: -1e4, y: -1e4, lift: shift, shift: parseFloat(shift) / 100, w: 0, h: 0, flex }
     tags.set(id, tag)
     return tag
   }
 
   // Doua etichete care s-ar suprapune: ramane cea adaugata prima (oamenii inaintea zonelor, zonele inaintea iconitelor).
+  // Cele asezate deja in cadrul acesta stau cate patru numere (stanga, sus, dreapta, jos) intr-un singur sir, refolosit:
+  // bucla ruleaza in fiecare cadru si nu lasa nimic de strans in urma.
   const GAP = 3
   const placed = []
-  const overlaps = (r) => placed.some((p) => r[0] < p[2] + GAP && r[2] > p[0] - GAP && r[1] < p[3] + GAP && r[3] > p[1] - GAP)
+  let count = 0
+  function free(l, t, r, b) {
+    for (let i = 0; i < count; i += 4) {
+      if (l < placed[i + 2] + GAP && r > placed[i] - GAP && t < placed[i + 3] + GAP && b > placed[i + 1] - GAP) return false
+    }
+    return true
+  }
 
   /** `top`: inaltimea barii de sus; o eticheta care ar intra pe sub ea nu se mai arata pe jumatate. */
   function update(camera, width, height, visible, top = 0) {
-    placed.length = 0
-    for (const [id, tag] of tags) {
-      const want = visible.has(id)
+    count = 0
+    for (const tag of tags.values()) {
+      const want = visible.has(tag.id)
       v.copy(tag.pos).project(camera)
       const inFront = v.z < 1 && v.z > -1
       let x = Math.round((v.x * 0.5 + 0.5) * width)
@@ -43,16 +51,21 @@ export function createTags(layer) {
           tag.w = tag.el.offsetWidth
           tag.h = tag.el.offsetHeight
         }
-        const tries = tag.flex ? [0, tag.h + GAP, -tag.h - GAP] : [0]
-        const box = (d) => {
-          const top = y + d + tag.h * tag.shift
-          return [x - tag.w / 2, top, x + tag.w / 2, top + tag.h]
-        }
-        const fit = tries.find((d) => box(d)[1] >= top && !overlaps(box(d)))
-        if (fit === undefined) on = false
-        else {
-          dy = fit
-          placed.push(box(fit))
+        // numele unei zone poate cobori sau urca o treapta, ca sa nu acopere alta eticheta
+        const l = x - tag.w / 2
+        const r = x + tag.w / 2
+        on = false
+        for (let k = 0; k < (tag.flex ? 3 : 1); k++) {
+          const d = k === 0 ? 0 : k === 1 ? tag.h + GAP : -tag.h - GAP
+          const t = y + d + tag.h * tag.shift
+          if (t < top || !free(l, t, r, t + tag.h)) continue
+          on = true
+          dy = d
+          placed[count++] = l
+          placed[count++] = t
+          placed[count++] = r
+          placed[count++] = t + tag.h
+          break
         }
       }
       if (on !== tag.on) {
