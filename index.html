@@ -398,15 +398,6 @@
             <span class="btn__dot"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></span>
           </a>
           <p class="dl__meta">Versiunea <span data-apk-version>{{VERSION}}</span> · Android {{MIN_ANDROID}} sau mai nou</p>
-          <div class="dl__hash" data-hash hidden>
-            <span>SHA-256</span>
-            <code data-hash-value></code>
-            <button type="button" class="dl__copy" data-copy-hash><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span>Copiază</span></button>
-          </div>
-          <!--cert--><div class="dl__hash">
-            <span>Certificat</span>
-            <code>{{CERT}}</code>
-          </div><!--/cert-->
         </div>
         <aside class="qr" data-qr hidden aria-label="Cod QR pentru descărcare">
           <div class="qr__code" data-qr-code></div>
@@ -420,6 +411,20 @@
         <li>Pornește {{APP_NAME}}, scrie-ți numele și dă acces la Bluetooth.</li>
         <li>Scanați-vă codurile cu prietenii, fiecare pe al celuilalt. De acum vă puteți scrie și fără semnal.</li>
       </ol>
+      <details class="verify" data-verify>
+        <summary><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>Verifică fișierul descărcat</summary>
+        <div class="verify__body">
+          <div class="dl__hash" data-hash hidden>
+            <span>SHA-256</span>
+            <code data-hash-value></code>
+            <button type="button" class="dl__copy" data-copy-hash><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span>Copiază</span></button>
+          </div>
+          <!--cert--><div class="dl__hash">
+            <span>Certificat</span>
+            <code>{{CERT}}</code>
+          </div><!--/cert-->
+        </div>
+      </details>
       <p class="dl__ios">Pe iPhone nu merge încă. {{APP_NAME}} e doar pentru Android.</p>
     </div>
   </section>

@@ -85,6 +85,7 @@ const icons = {
   key: 'regular/lock-key',
   timer: 'regular/clock-countdown',
   gauge: 'regular/gauge',
+  shield: 'regular/shield-check',
 }
 
 function sprite() {

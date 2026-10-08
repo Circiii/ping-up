@@ -804,15 +804,42 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   background: linear-gradient(90deg, rgb(14 17 15 / .94) 0%, rgb(14 17 15 / .72) 40%, rgb(14 17 15 / 0) 64%);
 }
 .download__copy { position: relative; max-width: 42rem; display: grid; gap: 28px; }
-.dl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px 28px; }
-.dl__main { display: grid; gap: 12px; justify-items: start; flex: 1 1 18rem; min-width: 0; }
+.dl { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; }
+.dl__main { display: grid; gap: 12px; justify-items: start; flex: 0 1 auto; min-width: 0; }
 .btn.is-off { background: var(--cell); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); cursor: default; }
 .btn.is-off:active { scale: 1; }
 .btn--dl { height: 64px; }
 .dl__meta { font-size: .875rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.dl__hash { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%; font-size: .75rem; color: var(--ink-3); }
+/* amprentele fisierului, intr-un panou care se deschide la cerere */
+.verify { max-width: 36rem; border-block: 1px solid rgb(244 246 240 / .12); }
+.verify[hidden] { display: none; }
+.verify summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 0;
+  font-size: .9375rem; font-weight: 600; color: var(--ink-2);
+  cursor: pointer; list-style: none;
+  transition: color .2s var(--ease);
+}
+.verify summary::-webkit-details-marker { display: none; }
+.verify summary .i { width: 18px; height: 18px; color: var(--green); }
+.verify summary::after {
+  content: ''; width: 8px; height: 8px; margin: 0 4px 0 auto; flex: none;
+  border: solid currentColor; border-width: 0 1.5px 1.5px 0;
+  translate: 0 -2px; rotate: 45deg;
+  transition: rotate .3s var(--ease), translate .3s var(--ease);
+}
+.verify[open] summary::after { translate: 0 2px; rotate: 225deg; }
+.verify summary:hover, .verify[open] summary { color: var(--ink); }
+.verify__body { display: grid; gap: 14px; padding: 2px 0 18px; }
+@supports (interpolate-size: allow-keywords) {
+  .verify { interpolate-size: allow-keywords; }
+  .verify::details-content { block-size: 0; overflow: clip; transition: block-size .35s var(--ease), content-visibility .35s allow-discrete; }
+  .verify[open]::details-content { block-size: auto; }
+}
+.dl__hash { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: baseline; gap: 6px 12px; font-size: .75rem; color: var(--ink-3); }
 .dl__hash[hidden] { display: none; }
-.dl__hash code { min-width: 0; font-family: var(--mono); font-size: .75rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.dl__hash code { min-width: 0; font-family: var(--mono); font-size: .75rem; line-height: 1.6; color: var(--ink-2); overflow-wrap: anywhere; }
+.dl__hash .dl__copy { grid-column: 2; justify-self: start; }
 .dl__copy {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 10px; border: 0; border-radius: 8px;
@@ -822,27 +849,46 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 }
 .dl__copy .i { width: 14px; height: 14px; }
 .dl__copy:hover { background: rgb(255 255 255 / .14); }
-.install { display: grid; gap: 10px; counter-reset: n; max-width: 36rem; }
+/* pasii instalarii, pe aceeasi linie ca pasii din capitole, doar ca numerotati */
+.install { display: grid; counter-reset: n; max-width: 36rem; }
 .install li {
+  --pad: 9px; --lh: 24px; --node: 28px;
   counter-increment: n;
-  display: grid; grid-template-columns: 1.6rem minmax(0, 1fr);
-  color: var(--ink-2); font-size: 1rem;
+  position: relative;
+  display: grid; grid-template-columns: var(--node) minmax(0, 1fr); column-gap: 16px;
+  padding: var(--pad) 0;
+  font-size: 1rem; line-height: var(--lh); color: var(--ink-2);
+  text-wrap: pretty;
 }
-.install li::before { content: counter(n) '.'; color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.install li::before {
+  content: counter(n);
+  width: var(--node); height: var(--node); margin-top: calc((var(--lh) - var(--node)) / 2);
+  display: grid; place-items: center; border-radius: 50%;
+  background: rgb(14 17 15 / .7);
+  box-shadow: inset 0 0 0 1px rgb(244 246 240 / .24);
+  font-size: .8125rem; font-weight: 650; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.install li:not(:last-child)::after {
+  content: ''; position: absolute; left: calc(var(--node) / 2 - .5px); width: 1px;
+  top: calc(var(--pad) + (var(--lh) + var(--node)) / 2 + 6px);
+  bottom: calc(6px - var(--pad) - (var(--lh) - var(--node)) / 2);
+  background: rgb(244 246 240 / .18);
+}
 .dl__ios { font-size: .875rem; color: var(--ink-3); }
 
+/* codul QR, langa buton: pe calculator il scanezi direct de pe ecran */
 .qr {
-  flex: 0 0 auto;
-  width: 168px;
-  padding: 10px;
-  border-radius: 14px;
-  background: #151916;
-  box-shadow: inset 0 0 0 1px var(--rim);
-  display: grid; gap: 8px;
-  font-size: .8125rem; line-height: 1.4; color: var(--ink-2);
+  flex: 0 1 18.5rem;
+  padding: 10px 18px 10px 10px;
+  border-radius: 16px;
+  background: rgb(21 25 22 / .86);
+  box-shadow: inset 0 1px 0 rgb(244 246 240 / .06), 0 18px 40px -22px rgb(0 0 0 / .8);
+  display: grid; grid-template-columns: 116px minmax(0, 1fr); align-items: center; gap: 16px;
+  font-size: .8125rem; line-height: 1.45; color: var(--ink-2);
+  text-wrap: pretty;
 }
 .qr[hidden] { display: none; }
-.qr__code { padding: 10px; border-radius: 8px; background: #F4F6F0; }
+.qr__code { padding: 8px; border-radius: 10px; background: #F4F6F0; }
 .qr__code svg { width: 100%; height: auto; }
 
 /* ---------- intrebari: foaia verde ---------- */

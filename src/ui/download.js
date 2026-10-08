@@ -49,6 +49,11 @@ export function setupDownload() {
     })
   }
 
+  // amprentele stau intr-un panou strans; fara niciuna (fara certificat in app.json si fara SHA-256), panoul nu apare
+  const verify = document.querySelector('[data-verify]')
+  const anyPrint = () => !!verify?.querySelector('.dl__hash:not([hidden])')
+  if (verify) verify.hidden = !anyPrint()
+
   // ultimul release al aplicatiei, ca pagina sa nu ramana la versiunea de la ultimul deploy
   fetch('apk.json', { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
@@ -60,6 +65,7 @@ export function setupDownload() {
       const hash = document.querySelector('[data-hash]')
       hash.querySelector('[data-hash-value]').textContent = info.sha256
       hash.hidden = false
+      if (verify) verify.hidden = false
     })
     .catch(() => {})
 
