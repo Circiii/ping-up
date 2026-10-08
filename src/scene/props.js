@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, box, canvasTexture, glow, lightPoints, lit, matte, merge, metal, place, stringLights, strut, truss, trussBetween } from './kit.js'
-import { BACKSTAGE, bounds, LAYOUT, meeting, pois, STAGE2, zone } from './world.js'
+import { BACKSTAGE, bounds, LAYOUT, meeting, pois, STAGE2, WHEEL, zone } from './world.js'
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z)
 
@@ -608,6 +608,7 @@ export function createProps(quality, rand, time) {
     // drumul spre intrare ramane liber, la fel si zona de productie din spatele scenei
     if (side === 1 && x > gx0 - 4 && x < gx1 + 4) continue
     if (x > BACKSTAGE.x0 - 3 && x < BACKSTAGE.x1 + 3 && z > BACKSTAGE.z0 - 3) continue
+    if (Math.hypot(x - WHEEL.x, z - WHEEL.z) < 12) continue
     trees.push([x, z, 1.3 + rand() * 1.5])
   }
   // doua feluri de copaci, fiecare cu alt verde; brazii doar in jurul festivalului

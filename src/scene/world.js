@@ -62,6 +62,11 @@ const s2 = zone['second-stage']
 export const STAGE = { x: 0, front: ms.z0 + 0.4, back: ms.z0 - 7.6, half: 16, barrier: ms.z0 + 2.4 }
 /** In spatele scenei mari, dincolo de gardul festivalului: zona de productie (vezi backstage.js). */
 export const BACKSTAGE = { x0: -44, x1: 44, z0: STAGE.back - 26, z1: STAGE.back - 1 }
+/**
+ * Roata mare, dincolo de zona de productie (vezi wheel.js): centrul, raza, inaltimea butucului si incotro priveste.
+ * Din cadrul larg de la inceputul povestii, jumatatea ei de sus se ridica luminata peste acoperisul scenei.
+ */
+export const WHEEL = { x: 34, z: -112, r: 14, hub: 16.5, face: -0.5 }
 /** Scena 2 sta la marginea de est a zonei ei, cu fata spre vest. */
 export const STAGE2 = { x: s2.x1 - 3, z: (s2.z0 + s2.z1) / 2 + 2, half: 7 }
 

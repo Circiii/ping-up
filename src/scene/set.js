@@ -4,6 +4,7 @@ import { createBackstage } from './backstage.js'
 import { rng } from './crowd.js'
 import { createProps } from './props.js'
 import { BPM, createStages } from './stage.js'
+import { createWheel } from './wheel.js'
 
 /** Liniile dintre telefoane si antena: o retea care se rupe pe rand. */
 function cellLinks(phones, top, count, time) {
@@ -157,8 +158,9 @@ export function createSet(phones, quality, models = null) {
   const stages = createStages(quality, time, models)
   const props = createProps(quality, rand, time)
   const backstage = createBackstage(quality, time)
+  const wheel = createWheel(quality, time)
   const cell = cellLinks(phones, props.tower.top, quality.low ? 90 : 170, time)
-  group.add(heaven.group, stages.group, props.group, backstage.group, cell.lines)
+  group.add(heaven.group, stages.group, props.group, backstage.group, wheel.group, cell.lines)
 
   return {
     group,
@@ -169,6 +171,7 @@ export function createSet(phones, quality, models = null) {
       stages.setView(w, h, dpr)
       props.setView(dpr)
       backstage.setView(dpr)
+      wheel.setView(dpr)
       heaven.starUniforms.uDpr.value = dpr
     },
     /** Ecranele si bannerele scriu cu Inter; daca fontul a venit dupa ele, le rescriem. */
@@ -180,6 +183,7 @@ export function createSet(phones, quality, models = null) {
     update(t, dt, s) {
       time.value = t
       const light = stages.update(t, dt, (t * BPM) / 60, s)
+      wheel.update((t * BPM) / 60)
       props.update(t, s)
       heaven.uniforms.uStage.value = light.level
       heaven.uniforms.uStageCol.value.copy(light.color)
