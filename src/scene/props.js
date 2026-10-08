@@ -26,17 +26,6 @@ function hipRoof(L, D, y0, y1) {
   return faces([e[0], a, b, e[0], b, e[1], e[2], b, a, e[2], a, e[3], e[1], b, e[2], e[3], a, e[0]])
 }
 
-/** Acoperis in doua ape, cu coama pe X. */
-function gableRoof(w, d, y0, y1) {
-  const A0 = [-w / 2, y0, -d / 2]
-  const A1 = [w / 2, y0, -d / 2]
-  const B0 = [-w / 2, y0, d / 2]
-  const B1 = [w / 2, y0, d / 2]
-  const R0 = [-w / 2, y1, 0]
-  const R1 = [w / 2, y1, 0]
-  return faces([A0, R0, R1, A0, R1, A1, B1, R1, R0, B1, R0, B0, A0, B0, R0, A1, R1, B1])
-}
-
 /** Roteste in jurul verticalei si muta la locul lui pe sol. */
 function put(geo, x, z, ry = 0) {
   if (ry) geo.rotateY(ry)
@@ -103,6 +92,78 @@ function crossTexture() {
   })
 }
 
+/**
+ * Acoperisul de panza al unui cort, in doua ape (coama pe X): panza se lasa putin intre ferme si intre coama
+ * si streasina, ca o panza intinsa, nu ca o placa.
+ */
+function tentRoof(L, half, eave, ridge, bays) {
+  const NX = bays * 8
+  const NT = 6
+  const pos = []
+  for (const side of [-1, 1]) {
+    const row = (i, j) => {
+      const x = -L / 2 + (i / NX) * L
+      const t = j / NT
+      const sag = 0.08 * Math.sin(Math.PI * ((i / NX) * bays % 1)) * Math.sin(Math.PI * t)
+      return [x, ridge - t * (ridge - eave) - sag, side * t * half]
+    }
+    for (let i = 0; i < NX; i++) {
+      for (let j = 0; j < NT; j++) {
+        const a = row(i, j)
+        const b = row(i + 1, j)
+        const c = row(i + 1, j + 1)
+        const d = row(i, j + 1)
+        pos.push(...a, ...b, ...c, ...a, ...c, ...d)
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2))
+  g.computeVertexNormals()
+  return g
+}
+
+/** Bordura cortului medical: alba, cu dunga rosie jos, crucea verde si "PRIM AJUTOR". */
+function tentValanceTexture() {
+  return canvasTexture(1024, 64, (g, w, h) => {
+    g.fillStyle = '#F2F3EE'
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = '#C7302A'
+    g.fillRect(0, h - 10, w, 10)
+    g.font = '800 30px Inter, system-ui, sans-serif'
+    g.textBaseline = 'middle'
+    for (let x = 30; x < w; x += 340) {
+      g.fillStyle = '#1E8238'
+      g.fillRect(x, 13, 28, 28)
+      g.fillStyle = '#fff'
+      g.fillRect(x + 11, 17, 6, 20)
+      g.fillRect(x + 4, 24, 20, 6)
+      g.fillStyle = '#1B2A1F'
+      g.fillText('PRIM AJUTOR', x + 40, h / 2 - 4)
+    }
+  })
+}
+
+/** Peretii cortului: panza cu cusaturi si doua ferestre de plastic, prin care se vede lumina dinauntru. */
+function tentWallTexture() {
+  return canvasTexture(512, 160, (g, w, h) => {
+    g.fillStyle = '#ECEEE7'
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = 'rgba(40,50,40,.08)'
+    for (let x = 0; x < w; x += 64) g.fillRect(x, 0, 2, h)
+    for (const x of [70, 300]) {
+      g.fillStyle = '#C9D7D2'
+      g.beginPath()
+      g.roundRect(x, 34, 140, 62, 8)
+      g.fill()
+      g.strokeStyle = 'rgba(30,40,30,.25)'
+      g.lineWidth = 3
+      g.stroke()
+    }
+  })
+}
+
 function treeGeometry() {
   return merge([
     place(new THREE.CylinderGeometry(0.15, 0.24, 2.3, 6), 0, 1.15, 0),
@@ -163,6 +224,8 @@ export function createProps(quality, rand, time) {
   /** Petele de lumina pe care constructiile le lasa pe sol: x, z, raza, culoare, tarie. */
   const spots = []
   const light = (x, z, r, color, a) => spots.push({ x, z, r, color, a })
+  // panzele cu litere; se rescriu cand vine fontul
+  const lettering = []
 
   const dark = matte('#141815')
   const wood = matte('#2B241A', 0.85)
@@ -242,33 +305,90 @@ export function createProps(quality, rand, time) {
   }
   light((food.x0 + food.x1) / 2, midZ, 22, '#FFC27A', 0.22)
 
-  // ---------- cortul medical: deschis spre nord si spre vest, cu lumina aprinsa ----------
+  // ---------- cortul medical: un cort de eveniment, deschis spre nord si spre vest, cu lumina aprinsa ----------
   const T = LAYOUT.tent
-  const cloth = new THREE.MeshStandardMaterial({ color: '#8F977F', emissive: '#3C4436', emissiveIntensity: 0.4, roughness: 0.95, side: THREE.DoubleSide })
+  const hw = T.w / 2
+  const hd = T.d / 2
+  const EAVE = 2.55
+  const RIDGE = 3.9
   const tentAt = (g) => put(g, T.x, T.z)
-  batch.add(cloth,
-    tentAt(gableRoof(T.w + 0.7, T.d + 0.7, 2.6, 4.05)),
-    tentAt(box(T.w, 2.55, 0.07, 0, 1.275, T.d / 2)),
-    tentAt(box(0.07, 2.55, T.d, T.w / 2, 1.275, 0)))
-  for (const sx of [-1, 0, 1]) for (const sz of [-1, 1]) batch.add(steel, tentAt(box(0.14, 2.6, 0.14, sx * (T.w / 2 - 0.07), 1.3, sz * (T.d / 2 - 0.07))))
-  batch.add(matte('#59614F'), tentAt(box(T.w - 0.3, 0.05, T.d - 0.3, 0, 0.025, 0)))
-  batch.add(matte('#8E947F'),
-    tentAt(box(0.85, 0.12, 2.05, 2.3, 0.55, 0.8)), tentAt(box(0.85, 0.12, 2.05, 3.5, 0.55, 0.8)),
-    tentAt(box(1.5, 0.82, 0.7, -1.6, 0.41, 2.5)))
-  batch.add(steel, tentAt(box(0.7, 0.5, 0.06, 2.3, 0.28, 0.8)), tentAt(box(0.7, 0.5, 0.06, 3.5, 0.28, 0.8)))
-  // semnul de prim ajutor, pe un catarg in coltul dinspre multime
-  const mastX = -T.w / 2 - 0.4
-  const mastZ = -T.d / 2 - 0.4
-  batch.add(steel, tentAt(strut(V(mastX, 0, mastZ), V(mastX, 6.6, mastZ), 0.07)))
+  // panza alba lasa sa treaca putin din lumina dinauntru
+  const canvasMat = new THREE.MeshStandardMaterial({ color: '#C9CDC4', roughness: 0.9, side: THREE.DoubleSide, emissive: '#FFF4E2', emissiveIntensity: 0.022 })
+  const alu = metal('#AEB4B4', 0.32)
+  batch.add(canvasMat, tentAt(tentRoof(T.w + 0.24, hd + 0.12, EAVE, RIDGE, 3)))
+  // fronton spre est si spre vest, deasupra intrarii
+  for (const sx of [-1, 1]) batch.add(canvasMat, tentAt(faces([[sx * hw, EAVE, -hd], [sx * hw, EAVE, hd], [sx * hw, RIDGE, 0]])))
+  // peretii inchisi, cu ferestre: in spate (sud) si spre est
+  const wallTex = tentWallTexture()
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, color: '#B9BDB4', roughness: 0.9, side: THREE.DoubleSide, emissive: '#FFF4E2', emissiveMap: wallTex, emissiveIntensity: 0.035 })
+  batch.add(wallMat,
+    tentAt(place(new THREE.PlaneGeometry(T.w, EAVE), 0, EAVE / 2, hd)),
+    tentAt(place(new THREE.PlaneGeometry(T.d, EAVE), hw, EAVE / 2, 0, 0, Math.PI / 2)))
+  // peretii laturilor deschise, rulati sub streasina
+  batch.add(canvasMat,
+    tentAt(place(new THREE.CylinderGeometry(0.1, 0.1, T.w - 0.2, 10, 1), 0, EAVE - 0.16, -hd - 0.04, 0, 0, Math.PI / 2)),
+    tentAt(place(new THREE.CylinderGeometry(0.1, 0.1, T.d - 0.2, 10, 1), -hw - 0.04, EAVE - 0.16, 0, Math.PI / 2)))
+  // bordura cu "PRIM AJUTOR" pe toate laturile
+  const valance = tentValanceTexture()
+  lettering.push(valance)
+  const valanceMat = new THREE.MeshStandardMaterial({ map: valance, color: '#C9CCC4', roughness: 0.85, side: THREE.DoubleSide, emissive: '#FFFFFF', emissiveMap: valance, emissiveIntensity: 0.07 })
+  const VH = 0.34
+  batch.add(valanceMat,
+    tentAt(place(new THREE.PlaneGeometry(T.w + 0.24, VH), 0, EAVE - VH / 2 + 0.02, -hd - 0.12, 0, Math.PI)),
+    tentAt(place(new THREE.PlaneGeometry(T.w + 0.24, VH), 0, EAVE - VH / 2 + 0.02, hd + 0.12)),
+    tentAt(place(new THREE.PlaneGeometry(T.d + 0.24, VH), -hw - 0.12, EAVE - VH / 2 + 0.02, 0, 0, -Math.PI / 2)),
+    tentAt(place(new THREE.PlaneGeometry(T.d + 0.24, VH), hw + 0.12, EAVE - VH / 2 + 0.02, 0, 0, Math.PI / 2)))
+  // structura de aluminiu: picioare, ferme, coama, cu saci de nisip la baza
+  const bays = [-hw, -hw + T.w / 3, -hw + (2 * T.w) / 3, hw]
+  for (const x of bays) {
+    for (const z of [-hd, hd]) {
+      batch.add(alu, tentAt(strut(V(x, 0, z), V(x, EAVE, z), 0.05, 8)), tentAt(strut(V(x, EAVE, z), V(x, RIDGE - 0.04, 0), 0.04, 6)))
+      batch.add(matte('#1D1F1C', 0.95), tentAt(place(new RoundedBoxGeometry(0.42, 0.16, 0.28, 2, 0.06), x + (x < 0 ? 0.24 : -0.24), 0.08, z)))
+    }
+  }
+  batch.add(alu, tentAt(strut(V(-hw, RIDGE - 0.04, 0), V(hw, RIDGE - 0.04, 0), 0.045, 6)))
+  for (const z of [-hd, hd]) batch.add(alu, tentAt(strut(V(-hw, EAVE, z), V(hw, EAVE, z), 0.04, 6)))
+  for (const x of [-hw, hw]) batch.add(alu, tentAt(strut(V(x, EAVE, -hd), V(x, EAVE, hd), 0.04, 6)))
+  // lampa LED de sub coama
+  batch.add(lit('#F7FAF2', 1.3), tentAt(box(T.w - 1.6, 0.05, 0.1, 0, RIDGE - 0.14, 0)))
+  // inauntru: podea, doua targi, o masa cu trusa, scaune si un stativ de perfuzie
+  batch.add(matte('#3A444C', 0.8), tentAt(box(T.w - 0.3, 0.04, T.d - 0.3, 0, 0.02, 0)))
+  const mattress = matte('#2B6C92', 0.62)
+  for (const cx of [hw - 1.5, hw - 3.2]) {
+    batch.add(mattress, tentAt(place(new RoundedBoxGeometry(0.72, 0.12, 1.95, 2, 0.05), cx, 0.66, hd - 1.25)))
+    batch.add(matte('#E6E8E2', 0.7), tentAt(place(new RoundedBoxGeometry(0.5, 0.09, 0.32, 2, 0.04), cx, 0.76, hd - 0.42)))
+    for (const lx of [-0.3, 0.3]) for (const lz of [-0.85, 0.85]) batch.add(alu, tentAt(strut(V(cx + lx, 0, hd - 1.25 + lz), V(cx + lx, 0.6, hd - 1.25 + lz), 0.02, 5)))
+  }
+  const tx = -hw + 1.5
+  const tz = hd - 0.7
+  batch.add(matte('#DCDFD8', 0.55), tentAt(box(1.4, 0.04, 0.68, tx, 0.76, tz)))
+  for (const lx of [-0.62, 0.62]) for (const lz of [-0.28, 0.28]) batch.add(alu, tentAt(strut(V(tx + lx, 0, tz + lz), V(tx + lx, 0.74, tz + lz), 0.018, 5)))
+  batch.add(matte('#B4261E', 0.72), tentAt(place(new RoundedBoxGeometry(0.46, 0.28, 0.3, 2, 0.05), tx - 0.3, 0.92, tz)))
+  batch.add(matte('#EDEEEA', 0.5), tentAt(place(new RoundedBoxGeometry(0.34, 0.2, 0.26, 2, 0.03), tx + 0.32, 0.88, tz + 0.04)))
+  for (const [cx, cz, ry] of [[tx - 0.4, tz - 0.8, 0.2], [tx + 0.5, tz - 0.85, -0.25]]) {
+    batch.add(matte('#26292B', 0.8),
+      tentAt(put(box(0.44, 0.04, 0.42, 0, 0.46, 0), cx, cz, ry)),
+      tentAt(put(box(0.44, 0.42, 0.04, 0, 0.7, 0.21), cx, cz, ry)))
+    for (const lx of [-0.19, 0.19]) for (const lz of [-0.18, 0.18]) batch.add(alu, tentAt(put(strut(V(lx, 0, lz), V(lx, 0.45, lz), 0.014, 4), cx, cz, ry)))
+  }
+  const ivX = hw - 2.35
+  const ivZ = hd - 2.0
+  batch.add(alu, tentAt(strut(V(ivX, 0, ivZ), V(ivX, 1.95, ivZ), 0.018, 5)), tentAt(box(0.3, 0.02, 0.02, ivX, 1.9, ivZ)))
+  batch.add(new THREE.MeshStandardMaterial({ color: '#CFE4EA', roughness: 0.2, transparent: true, opacity: 0.75 }), tentAt(place(new RoundedBoxGeometry(0.12, 0.2, 0.05, 2, 0.02), ivX + 0.12, 1.76, ivZ)))
+  // semnul de prim ajutor: o caseta luminoasa pe catarg, in coltul dinspre multime
+  const mastX = -hw - 0.5
+  const mastZ = -hd - 0.5
+  batch.add(alu, tentAt(strut(V(mastX, 0, mastZ), V(mastX, 6.3, mastZ), 0.06, 8)))
+  batch.add(matte('#1D2420', 0.6), tentAt(place(new RoundedBoxGeometry(1.74, 1.74, 0.16, 2, 0.06), mastX, 5.6, mastZ)))
   const cross = new THREE.MeshBasicMaterial({ map: crossTexture(), toneMapped: false })
   batch.add(cross,
-    tentAt(place(new THREE.PlaneGeometry(1.6, 1.6), mastX, 5.8, mastZ - 0.06, 0, Math.PI)),
-    tentAt(place(new THREE.PlaneGeometry(1.6, 1.6), mastX, 5.8, mastZ + 0.06)))
-  const tentLamp = new THREE.PointLight('#F3F5EC', 46, 13, 1.8)
-  tentLamp.position.set(T.x - 0.5, 2.9, T.z)
+    tentAt(place(new THREE.PlaneGeometry(1.58, 1.58), mastX, 5.6, mastZ - 0.085, 0, Math.PI)),
+    tentAt(place(new THREE.PlaneGeometry(1.58, 1.58), mastX, 5.6, mastZ + 0.085)))
+  const tentLamp = new THREE.PointLight('#F3F5EC', 30, 12, 1.8)
+  tentLamp.position.set(T.x - 0.3, 3.2, T.z)
   group.add(tentLamp)
-  const tentGlow = glow('#F3F5EC', 9, 0.4)
-  tentGlow.position.set(T.x - 0.5, 2.6, T.z - 0.3)
+  const tentGlow = glow('#F3F5EC', 7, 0.12)
+  tentGlow.position.set(T.x - 0.5, 2.4, T.z - 0.3)
   group.add(tentGlow)
   light(T.x - 0.8, T.z - T.d / 2 - 1.2, 7.5, '#EEF3E2', 0.75)
   light(T.x - T.w / 2 - 1.4, T.z, 6.5, '#EEF3E2', 0.6)
@@ -282,7 +402,6 @@ export function createProps(quality, rand, time) {
     trussBetween(V(gx0 - 0.6, 8.6, G.z), V(gx1 + 0.6, 8.6, G.z), 0.9))
   const bannerW = 19
   batch.add(dark, box(bannerW + 0.5, 2.9, 0.16, (gx0 + gx1) / 2, 6.6, G.z))
-  const lettering = []
   const banner = (text, facing) => {
     const tex = textTexture(text, '#D3D8B2', '#121613')
     lettering.push(tex)
