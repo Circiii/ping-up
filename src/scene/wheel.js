@@ -1,7 +1,7 @@
 // Roata mare de dincolo de scena, peste copaci: doua jante pe spite, cabinele colorate atarnate de ele si sute de
 // becuri care alearga pe janta in ritmul scenei. Se vede de departe, ca la festivalurile mari.
 import * as THREE from 'three'
-import { Batch, box, lit, metal, place, strut } from './kit.js'
+import { Batch, box, lit, place, strut } from './kit.js'
 import { WHEEL } from './world.js'
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z)
@@ -19,10 +19,12 @@ function paint(geo, hex) {
 export function createWheel(quality, time) {
   const group = new THREE.Group()
   const batch = new Batch()
-  // noaptea structura e o silueta; o desenteaza becurile
-  const steel = metal('#3C4441', 0.45)
-  const frame = metal('#252B28', 0.55)
-  const cabin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.25 })
+  // noaptea structura e o silueta; o desenteaza becurile. Tot ce e opac sta intr-un singur material, cu culoarea
+  // pe varfuri: o singura trecere prin placa video pentru toata roata
+  const solid = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.35, envMapIntensity: 0.6 })
+  const steel = { color: '#3C4441' }
+  const frame = { color: '#252B28' }
+  const add = (part, ...geos) => batch.add(solid, ...geos.map((g) => (g.attributes.color ? g : paint(g, part.color))))
   const { r, hub } = WHEEL
   const D = 1.15
   const SPOKES = 16
@@ -30,10 +32,10 @@ export function createWheel(quality, time) {
   // cele doua jante, cu spitele lor
   for (const z of [-D, D]) {
     const rim = new THREE.TorusGeometry(r, 0.16, 5, 72)
-    batch.add(steel, place(rim, 0, hub, z))
+    add(steel, place(rim, 0, hub, z))
     for (let i = 0; i < SPOKES; i++) {
       const a = (i / SPOKES) * Math.PI * 2
-      batch.add(steel, strut(V(0, hub, z * 0.4), V(Math.cos(a) * r, hub + Math.sin(a) * r, z), 0.06, 5))
+      add(steel, strut(V(0, hub, z * 0.4), V(Math.cos(a) * r, hub + Math.sin(a) * r, z), 0.06, 5))
     }
   }
   // legaturile dintre jante si butucul
@@ -41,18 +43,18 @@ export function createWheel(quality, time) {
     const a = (i / SPOKES) * Math.PI * 2
     const x = Math.cos(a) * r
     const y = hub + Math.sin(a) * r
-    batch.add(steel, strut(V(x, y, -D), V(x, y, D), 0.05, 5))
+    add(steel, strut(V(x, y, -D), V(x, y, D), 0.05, 5))
   }
-  batch.add(frame, place(new THREE.CylinderGeometry(0.7, 0.7, 2.8, 14), 0, hub, 0, Math.PI / 2))
+  add(frame, place(new THREE.CylinderGeometry(0.7, 0.7, 2.8, 14), 0, hub, 0, Math.PI / 2))
 
   // picioarele in A, de o parte si de alta, si platforma de jos
   for (const z of [-2.6, 2.6]) {
-    for (const x of [-7.5, 7.5]) batch.add(frame, strut(V(x, 0, z * 1.6), V(0, hub, z * 0.55), 0.32, 8))
-    batch.add(frame, strut(V(-4.4, hub * 0.42, z * 1.25), V(4.4, hub * 0.42, z * 1.25), 0.18, 6))
+    for (const x of [-7.5, 7.5]) add(frame, strut(V(x, 0, z * 1.6), V(0, hub, z * 0.55), 0.32, 8))
+    add(frame, strut(V(-4.4, hub * 0.42, z * 1.25), V(4.4, hub * 0.42, z * 1.25), 0.18, 6))
   }
-  batch.add(frame, box(16, 0.6, 9, 0, 0.3, 0))
+  add(frame, box(16, 0.6, 9, 0, 0.3, 0))
   batch.add(lit('#FFD9A0', 0.7), box(2.6, 0.9, 0.05, -4.5, 1.6, 4.52))
-  batch.add(frame, box(3.4, 2.6, 2.2, -4.5, 1.6, 3.4))
+  add(frame, box(3.4, 2.6, 2.2, -4.5, 1.6, 3.4))
 
   // cabinele: atarna drept, sub fiecare spita
   const tones = ['#2B5E45', '#D3D8B2', '#30D158', '#E2A84B', '#4FA79B', '#C8643F']
@@ -60,8 +62,8 @@ export function createWheel(quality, time) {
     const a = (i / SPOKES) * Math.PI * 2 + Math.PI / SPOKES
     const x = Math.cos(a) * r
     const y = hub + Math.sin(a) * r
-    batch.add(cabin, paint(box(1.5, 1.5, 1.6, x, y - 1.35, 0), tones[i % tones.length]), paint(box(1.7, 0.18, 1.8, x, y - 0.52, 0), '#1B201D'))
-    batch.add(frame, strut(V(x, y - 0.5, 0), V(x, y, 0), 0.05, 4))
+    batch.add(solid, paint(box(1.5, 1.5, 1.6, x, y - 1.35, 0), tones[i % tones.length]), paint(box(1.7, 0.18, 1.8, x, y - 0.52, 0), '#1B201D'))
+    add(frame, strut(V(x, y - 0.5, 0), V(x, y, 0), 0.05, 4))
   }
   const built = batch.build(new THREE.Group())
 

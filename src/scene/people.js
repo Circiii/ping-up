@@ -534,7 +534,9 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   const make = (geometry, count, morph = geometry) => {
     const geo = new THREE.InstancedBufferGeometry()
     geo.setIndex(geometry.index)
-    for (const g of geometry.groups) geo.addGroup(g.start, g.count, g.materialIndex)
+    // pe telefoane suvitele de par nu se vad pe ecranul mic: omul se deseneaza dintr-o trecere, fara ele
+    if (low && geometry.groups.length) geo.setDrawRange(0, geometry.groups[1].start)
+    else for (const g of geometry.groups) geo.addGroup(g.start, g.count, g.materialIndex)
     for (const name of ['position', 'normal', 'aColor', 'aRole', 'aScreen', 'uv']) geo.setAttribute(name, geometry.attributes[name])
     geo.setAttribute('aPos2', morph.attributes.position)
     geo.setAttribute('aNrm2', morph.attributes.normal)

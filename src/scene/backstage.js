@@ -51,6 +51,9 @@ const at = (geo, x, z, ry = 0) => {
 
 export function createBackstage(quality, time) {
   const group = new THREE.Group()
+  // pe telefoane zona de productie lipseste: ramane aproape toata in spatele scenei, iar fiecare material in plus
+  // inseamna inca o trecere prin placa video
+  if (quality.low) return { group, setView() {} }
   const batch = new Batch()
   const painted = new THREE.MeshStandardMaterial({ vertexColors: true, map: corrugated(), roughness: 0.75, metalness: 0.2, envMapIntensity: 0.4 })
   const smooth = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.3, envMapIntensity: 0.6 })
