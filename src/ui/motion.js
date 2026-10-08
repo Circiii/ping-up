@@ -42,12 +42,19 @@ function navPill() {
   let current = -1
   let shown = false
   let queued = false
+  // unde incepe fiecare sectiune, masurat doar cand se schimba asezarea: la derulare nu mai citim nimic din pagina,
+  // altfel browserul ar recalcula asezarea in fiecare cadru, dupa ce povestea a schimbat textele
+  let tops = []
+  const measure = () => {
+    tops = order.map((el) => el.getBoundingClientRect().top + scrollY)
+  }
+  measure()
 
   function update() {
     queued = false
-    const mid = innerHeight * 0.45
+    const mid = scrollY + innerHeight * 0.45
     let id = 'acasa'
-    for (const el of order) if (el.getBoundingClientRect().top <= mid) id = el.id
+    for (let k = 0; k < tops.length; k++) if (tops[k] <= mid) id = order[k].id
     const i = owner[id] ?? -1
     if (i === current) return
     current = i
@@ -74,11 +81,15 @@ function navPill() {
     requestAnimationFrame(update)
   }
   addEventListener('scroll', later, { passive: true })
-  addEventListener('resize', () => {
+  const relayout = () => {
+    measure()
     current = -1
     shown = false
     later()
-  })
+  }
+  addEventListener('resize', relayout)
+  // si cand isi schimba inaltimea pagina (fontul, scena pornita, intrebarile deschise)
+  new ResizeObserver(relayout).observe(document.querySelector('main') ?? document.body)
   update()
 }
 
