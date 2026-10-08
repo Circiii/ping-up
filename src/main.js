@@ -52,7 +52,10 @@ async function start() {
   const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl, atlasUrl)).catch(() => null)
   await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))])
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
-  const scene = createScene(canvas, quality(), await people)
+  // pe o retea lenta oamenii (fisierul cel mai mare) nu tin scena pe loc: ea porneste cu siluete si ii primeste dupa
+  const early = await Promise.race([people, new Promise((r) => setTimeout(() => r(undefined), 1500))])
+  const scene = createScene(canvas, quality(), early ?? null)
+  if (early === undefined) people.then((m) => scene.upgradePeople(m)).catch(() => {})
   const story = createStory(scene, { reduce })
   // shaderele se compileaza acum, cat panza e inca ascunsa, nu in mijlocul derularii
   await scene.warm().catch(() => {})

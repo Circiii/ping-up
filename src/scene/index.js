@@ -124,7 +124,7 @@ export function createScene(canvas, quality, models = null) {
     [crowd.tent.x, crowd.tent.z, 18],
     [crowd.holders[0].x, crowd.holders[0].z, 16],
   ]
-  const people = createPeople(crowd.phones, {
+  const shared = {
     uBeat: beatU.uBeat,
     uBob: beatU.uBob,
     uStageXZ: beatU.uStageXZ,
@@ -138,8 +138,15 @@ export function createScene(canvas, quality, models = null) {
     uWake: lightsU.uWake,
     uLightTex: { value: ground.lights },
     uLightRect: { value: new THREE.Vector4(ground.rect.x, ground.rect.z, ground.rect.w, ground.rect.h) },
-  }, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED, near: closeUps, models, low: quality.low })
-  people.uniforms.uStage2.value.set(STAGE2.x - 3, STAGE2.z, 0.5)
+  }
+  const makePeople = (m) => {
+    const p = createPeople(crowd.phones, shared, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED, near: closeUps, models: m, low: quality.low })
+    p.uniforms.uStage2.value.set(STAGE2.x - 3, STAGE2.z, 0.5)
+    return p
+  }
+  // oamenii pot veni si dupa ce scena a pornit (vezi upgradePeople): pana atunci, siluetele simple
+  let people = makePeople(models)
+  let thinned = 1
   scene.add(ground.mesh, set.group, people.mesh, people.solo, crowd.group)
 
   // ---- pinul, sub reflector ----
@@ -503,7 +510,24 @@ export function createScene(canvas, quality, models = null) {
       post?.dropBloom()
     },
     thin(share) {
+      thinned = share
       people.thin(share)
+    },
+    /** Oamenii adevarati, sositi dupa ce scena a pornit (pe o retea lenta): iau locul siluetelor, cu aceeasi lumina. */
+    async upgradePeople(m) {
+      if (!m) return
+      const old = people
+      const next = makePeople(m)
+      next.uniforms.uPin.value.copy(old.uniforms.uPin.value)
+      if (thinned < 1) next.thin(thinned)
+      next.mesh.visible = old.mesh.visible
+      next.solo.visible = old.solo.visible
+      scene.remove(old.mesh, old.solo)
+      scene.add(next.mesh, next.solo)
+      people = next
+      old.mesh.traverse((o) => o.geometry?.dispose())
+      old.solo.geometry.dispose()
+      await this.warm()
     },
     /** cate telefoane cu aplicatia sunt in raza data, de la tine */
     meshCount(radius) {
