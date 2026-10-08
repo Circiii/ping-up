@@ -472,6 +472,31 @@ export function createScene(canvas, quality, models = null) {
     pointer,
     resize,
     render,
+    /**
+     * Compileaza dinainte shaderele tuturor obiectelor, si ale celor ascunse acum (harta, parul celor departe,
+     * trecatorul), si urca texturile pe placa video: altfel s-ar face la prima aparitie, cu o sacadare in derulare.
+     */
+    async warm() {
+      const hidden = []
+      scene.traverse((o) => {
+        if (o.visible) return
+        hidden.push(o)
+        o.visible = true
+      })
+      const textures = new Set()
+      scene.traverse((o) => {
+        for (const m of [o.material].flat()) {
+          if (!m) continue
+          for (const v of Object.values(m)) if (v?.isTexture) textures.add(v)
+          for (const u of Object.values(m.uniforms ?? {})) if (u.value?.isTexture) textures.add(u.value)
+        }
+      })
+      // programele se aleg pe loc, la apel; doar asteptarea compilarii ramane pentru mai tarziu
+      const ready = renderer.compileAsync(scene, camera)
+      for (const o of hidden) o.visible = false
+      for (const t of textures) renderer.initTexture(t)
+      await Promise.race([ready, new Promise((r) => setTimeout(r, 2000))])
+    },
     /** Trepte de rezerva cand placa video nu tine pasul: fara stralucire, apoi cu multimea rarita. */
     get hasBloom() { return !!post?.bloom },
     dropBloom() {

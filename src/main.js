@@ -40,6 +40,8 @@ async function start() {
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
   const scene = createScene(canvas, quality(), await people)
   const story = createStory(scene, { reduce })
+  // shaderele se compileaza acum, cat panza e inca ascunsa, nu in mijlocul derularii
+  await scene.warm().catch(() => {})
   // de aici capitolele stau pe loc si isi schimba textul; fara scena raman o pagina obisnuita.
   // Pana la primul cadru tranzitiile stau oprite: altfel textele tuturor capitolelor s-ar stinge unul peste altul.
   const root = document.documentElement
