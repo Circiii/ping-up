@@ -208,6 +208,10 @@ section:focus { outline: none; }
 }
 .btn:hover { background: #55DE78; }
 .btn:active { scale: .97; }
+/* butonul verde are volum: lumina cade de sus, iar sub el verdele se reflecta moale */
+.btn--small, .btn--big {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .34), inset 0 -2px 0 rgb(0 0 0 / .1), 0 10px 24px -12px rgb(48 209 88 / .6);
+}
 /* sageata sta in cercul ei, lipit de marginea butonului, si coboara un pic sub cursor */
 .btn__dot {
   width: 32px; height: 32px; border-radius: 50%; flex: none;
@@ -218,7 +222,14 @@ section:focus { outline: none; }
 .btn__dot .i { width: 16px; height: 16px; }
 .btn:hover .btn__dot { translate: 0 1px; scale: 1.06; background: rgb(11 14 12 / .2); }
 .btn--small { margin-left: 8px; height: 40px; padding: 0 4px 0 16px; font-size: .9375rem; }
-.btn--big { padding: 17px 28px 17px 22px; font-size: 1.0625rem; position: relative; overflow: hidden; isolation: isolate; }
+.btn--big { height: 60px; padding: 0 6px 0 26px; gap: 18px; font-size: 1.0625rem; position: relative; overflow: hidden; isolation: isolate; }
+.btn--big .btn__dot { width: 48px; height: 48px; background: rgb(11 14 12 / .12); }
+.btn--big .btn__dot .i { width: 20px; height: 20px; }
+.btn--big:hover .btn__dot { translate: 0 2px; }
+/* eticheta pe doua randuri: ce faci si cat cantareste */
+.btn__label { display: grid; line-height: 1.2; }
+.btn__label small { font-size: .8125rem; font-weight: 600; opacity: .64; font-variant-numeric: tabular-nums; }
+.btn.is-off :is(.btn__dot, small) { display: none; }
 .btn--big::after {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(110deg, transparent 32%, rgb(255 255 255 / .42) 47%, rgb(255 255 255 / .42) 53%, transparent 68%);
@@ -230,15 +241,21 @@ section:focus { outline: none; }
   0%, 74% { translate: -115% 0; }
   100% { translate: 115% 0; }
 }
-.btn--big .i { width: 22px; height: 22px; }
 
+/* linkul de langa butonul mare: acelasi cerc, doar conturat */
 .link {
-  display: inline-flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 12px;
   font-weight: 600; text-decoration: none; color: var(--ink);
-  padding: 12px 6px;
+  padding: 6px 4px;
 }
-.link .i { width: 18px; height: 18px; transition: translate .25s var(--ease); }
-.link:hover .i { translate: 0 3px; }
+.link__dot {
+  width: 40px; height: 40px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  box-shadow: inset 0 0 0 1px rgb(244 246 240 / .26);
+  transition: translate .35s var(--ease-out), background-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.link__dot .i { width: 16px; height: 16px; }
+.link:hover .link__dot { translate: 0 2px; background: rgb(244 246 240 / .08); box-shadow: inset 0 0 0 1px rgb(244 246 240 / .42); }
 
 /* ---------- prima pagina ---------- */
 
@@ -288,7 +305,9 @@ main { position: relative; z-index: 2; }
 :is(.tag, .f small, .dl__hash, .dl__copy, .packet__sum, .foot__legal, .rail a span, .dl__ios) { letter-spacing: 0; }
 .lead { font-size: var(--t-lead); line-height: 1.45; letter-spacing: -.016em; color: var(--ink-2); max-width: 33rem; text-wrap: pretty; }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
-.facts { font-size: .9375rem; color: var(--ink-3); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .9375rem; color: var(--ink-2); }
+.facts li { display: inline-flex; align-items: center; gap: 8px; }
+.facts .i { width: 16px; height: 16px; color: var(--green); }
 
 /* ---------- capitolele povestii ----------
    Fara scena 3D sunt o pagina obisnuita: fiecare capitol sta lipit sus cat tine inaltimea lui.
@@ -704,7 +723,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 .dl__main { display: grid; gap: 12px; justify-items: start; flex: 1 1 18rem; min-width: 0; }
 .btn.is-off { background: var(--cell); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); cursor: default; }
 .btn.is-off:active { scale: 1; }
-.btn--dl small {font-size: .875rem; font-weight: 600; opacity: .66; padding-left: 2px; font-variant-numeric: tabular-nums; }
+.btn--dl { height: 64px; }
 .dl__meta { font-size: .875rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .dl__hash { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%; font-size: .75rem; color: var(--ink-3); }
 .dl__hash[hidden] { display: none; }
@@ -934,7 +953,8 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   .btn--small .btn__dot { width: 28px; height: 28px; }
   .hero { min-height: 100svh; padding-bottom: 24px; }
   .hero__copy { gap: 14px; }
-  .btn--big { padding: 12px 22px 12px 18px; }
+  .btn--big { height: 50px; padding-left: 20px; }
+  .btn--big .btn__dot { width: 40px; height: 40px; }
   .copy { max-width: min(30rem, 46vw); gap: 10px; }
   .copy > p { line-height: 1.4; }
   .phone, .copy :is(.states, .steps, .note__more) { display: none; }
@@ -942,12 +962,6 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   .packet { width: min(380px, 40vw); padding: 12px; gap: 8px; }
   .packet__sum, .f--more { display: none; }
   .f--sealed b { max-height: 3em; }
-}
-
-/* pe cele mai inguste telefoane marimea APK-ului trece sub eticheta, ca butonul sa nu iasa din pagina */
-@media (max-width: 380px) {
-  .btn--dl { flex-wrap: wrap; row-gap: 0; white-space: normal; }
-  .btn--dl small { flex-basis: 100%; padding-left: 32px; }
 }
 
 /* sub 350px, in bara de sus ramane doar logo-ul; numele e oricum in eticheta linkului */
@@ -980,7 +994,8 @@ html.no-scene .chapter__stage { position: relative; height: auto; min-height: 10
   .hero__title { font-size: 2.625rem; }
   .hero__copy { gap: 16px; }
   .lead { font-size: 1.0625rem; }
-  .btn--big { padding: 14px 24px 14px 18px; }
+  .btn--big { height: 54px; padding-left: 22px; }
+  .btn--big .btn__dot { width: 42px; height: 42px; }
   .copy { gap: 10px; }
   .copy > p { font-size: .9375rem; line-height: 1.45; }
   .states { gap: 6px; }

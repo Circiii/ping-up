@@ -86,12 +86,16 @@
       <p class="lead">Scrii prietenilor și chemi ajutor chiar când rețeaua cade. Mesajele sar din telefon în telefon, prin Bluetooth.</p>
       <div class="cta">
         <a class="btn btn--big" href="#descarca" data-download-link>
-          <svg class="i" aria-hidden="true"><use href="#i-android"/></svg>
           <span>Descarcă pentru Android</span>
+          <span class="btn__dot"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></span>
         </a>
-        <a class="link" href="#cade">Vezi cum merge <svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></a>
+        <a class="link" href="#cade"><span>Vezi cum merge</span><span class="link__dot"><svg class="i" aria-hidden="true"><use href="#i-arrow-down"/></svg></span></a>
       </div>
-      <p class="facts">Gratuit, fără cont. Merge pe Android {{MIN_ANDROID}} sau mai nou.</p>
+      <ul class="facts">
+        <li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Gratuit</li>
+        <li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Fără cont</li>
+        <li><svg class="i" aria-hidden="true"><use href="#i-android"/></svg>Android {{MIN_ANDROID}} sau mai nou</li>
+      </ul>
     </div>
   </section>
 
@@ -387,9 +391,8 @@
       <div class="dl" data-dl>
         <div class="dl__main">
           <a class="btn btn--big btn--dl" href="ping-up.apk" download data-apk>
-            <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
-            <span>Descarcă {{APP_NAME}}</span>
-            <small data-apk-size>APK</small>
+            <span class="btn__label"><span data-apk-label>Descarcă {{APP_NAME}}</span><small data-apk-size>APK</small></span>
+            <span class="btn__dot"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></span>
           </a>
           <p class="dl__meta">Versiunea <span data-apk-version>{{VERSION}}</span> · Android {{MIN_ANDROID}} sau mai nou</p>
           <div class="dl__hash" data-hash hidden>

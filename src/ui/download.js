@@ -37,7 +37,7 @@ export function setupDownload() {
     btn.removeAttribute('download')
     btn.setAttribute('aria-disabled', 'true')
     btn.classList.add('is-off')
-    btn.querySelector('span').textContent = 'Doar pentru Android'
+    btn.querySelector('[data-apk-label]').textContent = 'Doar pentru Android'
   }
 
   // codul QR e doar pentru calculator; telefoanele nu descarca generatorul
