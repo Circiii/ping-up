@@ -7,6 +7,9 @@ setupDownload()
 const canvas = document.getElementById('scene')
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// miscarea interfetei (butoane, bara de sus, intrebari, intrari in pagina) vine separat, dupa scena
+if (!reduce) import('./ui/motion.js').then((m) => m.setupMotion(), () => {})
+
 function webgl() {
   try {
     return !!document.createElement('canvas').getContext('webgl2')

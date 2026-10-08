@@ -168,7 +168,16 @@ section:focus { outline: none; }
   text-decoration: none; font-size: .9375rem; font-weight: 500; color: var(--ink-2);
   transition: color .15s var(--ease);
 }
-.nav__links a:hover { color: var(--ink); }
+.nav__links a:hover, .nav__links a[aria-current] { color: var(--ink); }
+/* pastila de sub linkul sectiunii in care esti; o muta src/ui/motion.js */
+.nav__links { position: relative; isolation: isolate; }
+.nav__pill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0; z-index: -1;
+  border-radius: 8px;
+  background: rgb(244 246 240 / .08);
+  box-shadow: inset 0 0 0 1px rgb(244 246 240 / .07);
+  opacity: 0; pointer-events: none;
+}
 
 /* ---------- butoane ---------- */
 
@@ -184,7 +193,18 @@ section:focus { outline: none; }
 .btn:active { scale: .97; }
 .btn--small { margin-left: 8px; padding: 9px 16px 9px 13px; font-size: .9375rem; }
 .btn--small .i { width: 18px; height: 18px; }
-.btn--big { padding: 17px 28px 17px 22px; font-size: 1.0625rem; }
+.btn--big { padding: 17px 28px 17px 22px; font-size: 1.0625rem; position: relative; overflow: hidden; isolation: isolate; }
+.btn--big::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(110deg, transparent 32%, rgb(255 255 255 / .42) 47%, rgb(255 255 255 / .42) 53%, transparent 68%);
+  translate: -115% 0;
+  animation: shine 6.5s var(--ease) 2.8s infinite;
+}
+.btn.is-off::after { display: none; }
+@keyframes shine {
+  0%, 74% { translate: -115% 0; }
+  100% { translate: 115% 0; }
+}
 .btn--big .i { width: 22px; height: 22px; }
 
 .link {
@@ -220,6 +240,16 @@ main { position: relative; z-index: 2; }
   letter-spacing: -.035em;
 }
 .hero__title span { display: block; white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero__copy > *, .hero__title span { animation: rise .95s var(--ease-out) both; }
+  .hero__title span { animation-delay: .09s; }
+  .hero__copy > :nth-child(2) { animation-delay: .2s; }
+  .hero__copy > :nth-child(3) { animation-delay: .3s; }
+  .hero__copy > :nth-child(4) { animation-delay: .38s; }
+}
+@keyframes rise {
+  from { opacity: 0; translate: 0 26px; filter: blur(10px); }
+}
 .lead { font-size: var(--t-lead); line-height: 1.45; color: var(--ink-2); max-width: 33rem; text-wrap: pretty; }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .facts { font-size: .9375rem; color: var(--ink-3); }
@@ -610,6 +640,15 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 .rider__head h2 { font-size: var(--t-h2); line-height: 1.02; font-weight: 710; letter-spacing: -.03em; }
 .rider__head p { font-size: var(--t-lead); color: var(--sage-ink-2); }
 .rider__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px clamp(24px, 3vw, 48px); }
+.spec { position: relative; }
+.spec::before {
+  content: ''; position: absolute; inset: -16px -18px; border-radius: 18px; pointer-events: none;
+  background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgb(18 24 18 / .075), transparent 70%);
+  opacity: 0; transition: opacity .35s var(--ease);
+}
+@media (pointer: fine) {
+  .spec:hover::before { opacity: 1; }
+}
 .spec h3 { font-size: 1.125rem; font-weight: 680; letter-spacing: -.015em; padding-bottom: 10px; border-bottom: 1.5px solid var(--sage-ink); }
 .spec dl div {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px;
@@ -705,8 +744,16 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 /* raspunsul se deschide lin acolo unde browserul stie sa animeze inaltimea automata */
 @supports (interpolate-size: allow-keywords) {
   .faq details { interpolate-size: allow-keywords; }
-  .faq details::details-content { block-size: 0; overflow: clip; transition: block-size .35s var(--ease), content-visibility .35s allow-discrete; }
-  .faq details[open]::details-content { block-size: auto; }
+  .faq:not(.is-js) details::details-content { block-size: 0; overflow: clip; transition: block-size .35s var(--ease), content-visibility .35s allow-discrete; }
+  .faq:not(.is-js) details[open]::details-content { block-size: auto; }
+}
+/* cu Motion, raspunsul se deschide pe arc (src/ui/motion.js); semnul se intoarce odata cu inchiderea */
+.faq details p { overflow: hidden; }
+.faq details.is-closing summary::after { rotate: 0deg; }
+.faq summary { transition: color .2s var(--ease); }
+.faq summary:hover, .faq details[open] summary { color: var(--ink); }
+@media (pointer: fine) {
+  .faq summary:hover::after { color: var(--ink); }
 }
 
 /* ---------- subsol ---------- */
