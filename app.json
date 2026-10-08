@@ -1,5 +1,6 @@
 {
   "name": "Ping Up",
-  "version": "0.1.0",
-  "minSdk": 26
+  "version": "0.2.0",
+  "minSdk": 26,
+  "certSha256": "a27890e786ac0e10e9d49346e21e43f7057d0d39d5fae6726141ae2188a280c8"
 }

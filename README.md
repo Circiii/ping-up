@@ -39,7 +39,8 @@ descărcarea merge oricum; doar mărimea și SHA-256-ul pot lipsi o vreme.
 
 ## Ce e unde
 
-- `app.json`: numele aplicației, versiunea de rezervă (dacă GitHub nu răspunde la build) și Android-ul minim (SDK).
+- `app.json`: numele aplicației, versiunea de rezervă (dacă GitHub nu răspunde la build), Android-ul minim (SDK) și
+  `certSha256`, amprenta certificatului de semnare (din notele primului release), afișată sub butonul de descărcare.
 - `api/apk.js`, `lib/release.js`: ultimul release de pe GitHub, pentru butonul de descărcare.
 - `src/data/venue.json`: harta festivalului, aceeași ca în aplicație.
 - `src/scene/`: scena 3D (Three.js): mulțimea și rețeaua, oamenii, scenele, construcțiile, pinul din logo, solul și harta.

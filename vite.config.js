@@ -13,6 +13,9 @@ const appName = app.name
 const minSdk = app.minSdk
 const androidNames = { 26: '8.0', 27: '8.1', 28: '9', 29: '10', 30: '11', 31: '12', 32: '12L', 33: '13', 34: '14', 35: '15', 36: '16' }
 const minAndroid = androidNames[minSdk] ?? String(minSdk)
+// Amprenta certificatului cu care e semnat APK-ul, din notele release-ului. Sta aici, nu pe GitHub: un APK
+// pus acolo de altcineva nu o poate schimba si pe site.
+const cert = (app.certSha256 ?? '').replace(/[^0-9a-f]/gi, '').toUpperCase().match(/../g)?.join(':') ?? ''
 
 async function releasedVersion() {
   try {
@@ -101,7 +104,7 @@ const assetLicenses = {
 
 export default defineConfig(async ({ command }) => {
   const version = command === 'build' ? await releasedVersion() : app.version
-  const tokens = { APP_NAME: appName, VERSION: version, MIN_ANDROID: minAndroid }
+  const tokens = { APP_NAME: appName, VERSION: version, MIN_ANDROID: minAndroid, CERT: cert }
   return {
     base: './',
     plugins: [
@@ -111,7 +114,8 @@ export default defineConfig(async ({ command }) => {
         name: 'app-tokens',
         transformIndexHtml: (html) => html
           .replace('<!--icons-->', sprite())
-          .replace(/\{\{(APP_NAME|VERSION|MIN_ANDROID)\}\}/g, (_, key) => tokens[key]),
+          .replace(/<!--cert-->([\s\S]*?)<!--\/cert-->/, cert ? '$1' : '')
+          .replace(/\{\{(APP_NAME|VERSION|MIN_ANDROID|CERT)\}\}/g, (_, key) => tokens[key]),
       },
     ],
     build: {
