@@ -720,7 +720,9 @@ export function createProps(quality, rand, time) {
   run(bounds.x1, bounds.z0, bounds.x1, bounds.z1)
   run(bounds.x1, bounds.z1, bounds.x0, bounds.z1)
   run(bounds.x0, bounds.z1, bounds.x0, bounds.z0)
-  const fence = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 1.75, 0.1), steel, posts.length)
+  // stalpii au materialul lor: acelasi material pe o plasa simpla si pe una cu instante ar schimba shaderul de doua ori
+  // in fiecare cadru
+  const fence = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 1.75, 0.1), steel.clone(), posts.length)
   posts.forEach(([x, z], i) => {
     dummy.position.set(x, 0.875, z)
     dummy.rotation.set(0, 0, 0)
