@@ -311,16 +311,37 @@ export function createProps(quality, rand, time) {
 
   // ---------- baruri: corturi de panza, cu tejghea pe patru laturi, raftul din mijloc si firma aprinsa ----------
   const glows = []
-  // panza in dungi verde inchis si crem, ca la corturile de festival
-  const stripes = canvasTexture(64, 4, (g, w, h) => {
-    g.fillStyle = '#D8D0B6'
-    g.fillRect(0, 0, w / 2, h)
-    g.fillStyle = '#24402E'
-    g.fillRect(w / 2, 0, w / 2, h)
+  // Panza in dungi verde inchis si crem, ca la corturile de festival: fasii cusute una de alta, fiecare putin
+  // bombata intre cusaturi. Culoarea si relieful vin din doua panze desenate la fel.
+  const panels = (paint) => {
+    const tex = canvasTexture(256, 8, (g, w, h) => {
+      for (let k = 0; k < 2; k++) {
+        const x0 = (k * w) / 2
+        const grad = g.createLinearGradient(x0, 0, x0 + w / 2, 0)
+        for (const [at, v] of [[0, 0], [0.5, 1], [1, 0]]) grad.addColorStop(at, paint(k, v))
+        g.fillStyle = grad
+        g.fillRect(x0, 0, w / 2, h)
+        // cusatura, intre doua fasii
+        g.fillStyle = paint(k, -1)
+        g.fillRect(x0, 0, 2, h)
+      }
+    })
+    tex.wrapS = THREE.RepeatWrapping
+    tex.repeat.set(9, 1)
+    tex.anisotropy = 8
+    return tex
+  }
+  const cloth = [[216, 206, 180], [38, 66, 48]]
+  const stripes = panels((k, v) => {
+    const [r, gr, b] = cloth[k].map((c) => Math.round(c * (v < 0 ? 0.62 : 0.9 + 0.1 * v)))
+    return `rgb(${r},${gr},${b})`
   })
-  stripes.wrapS = THREE.RepeatWrapping
-  stripes.repeat.set(9, 1)
-  const barCanvas = new THREE.MeshStandardMaterial({ map: stripes, color: '#8E8775', roughness: 0.92, side: THREE.DoubleSide, emissive: '#FFD9A0', emissiveIntensity: 0.025 })
+  const relief = panels((k, v) => {
+    const c = v < 0 ? 0 : Math.round(110 + 120 * v)
+    return `rgb(${c},${c},${c})`
+  })
+  relief.colorSpace = THREE.NoColorSpace
+  const barCanvas = new THREE.MeshStandardMaterial({ map: stripes, bumpMap: relief, bumpScale: 2.5, color: '#8E8775', roughness: 0.92, side: THREE.DoubleSide, emissive: '#FFD9A0', emissiveIntensity: 0.025 })
   const barValance = barValanceTexture()
   lettering.push(barValance)
   const barValanceMat = new THREE.MeshStandardMaterial({ map: barValance, roughness: 0.85, side: THREE.DoubleSide, emissive: '#FFFFFF', emissiveMap: barValance, emissiveIntensity: 0.12 })
