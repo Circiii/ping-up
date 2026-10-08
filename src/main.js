@@ -48,12 +48,16 @@ function quality() {
 async function start() {
   // scena se descarca in timp ce asteptam putin fontul: ecranele LED scriu cu Inter
   const parts = Promise.all([import('./scene/index.js'), import('./story.js'), import('./nav.js')])
-  // oamenii vin intr-un fisier separat; daca nu vin, raman siluetele simple
-  const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl, atlasUrl)).catch(() => null)
   await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))])
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
-  // pe o retea lenta oamenii (fisierul cel mai mare) nu tin scena pe loc: ea porneste cu siluete si ii primeste dupa
-  const early = await Promise.race([people, new Promise((r) => setTimeout(() => r(undefined), 1500))])
+  // oamenii (fisierul cel mai mare) se descarca abia acum, ca pe o retea lenta sa nu imparta banda cu codul scenei;
+  // daca nu vin deloc, raman siluetele simple
+  const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl, atlasUrl)).catch(() => null)
+  // si nu tin scena pe loc: daca intarzie, ea porneste cu siluete si ii primeste dupa. Pe o retea lenta (cand
+  // browserul o spune) nici nu ii mai asteptam
+  const net = navigator.connection
+  const thinNet = !!net && (/2g|3g/.test(net.effectiveType ?? '') || net.saveData)
+  const early = await Promise.race([people, new Promise((r) => setTimeout(() => r(undefined), thinNet ? 0 : 800))])
   const scene = createScene(canvas, quality(), early ?? null)
   if (early === undefined) people.then((m) => scene.upgradePeople(m)).catch(() => {})
   const story = createStory(scene, { reduce })
