@@ -80,7 +80,7 @@ const GLYPHS = {
   medical: 'M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6Z',
 }
 
-export function createScene(canvas, quality) {
+export function createScene(canvas, quality, models = null) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality.low, powerPreference: 'high-performance' })
   renderer.setPixelRatio(quality.dpr)
   renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -100,7 +100,7 @@ export function createScene(canvas, quality) {
   const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 2000)
 
   const crowd = createCrowd({ density: quality.density })
-  const set = createSet(crowd.phones, quality)
+  const set = createSet(crowd.phones, quality, models)
   // scena nu asteapta fontul mai mult de o secunda; cand vine, ecranele se rescriu cu el
   if (document.fonts && !document.fonts.check('800 16px Inter')) {
     document.fonts.load('800 16px Inter').then(() => set.redrawText(), () => {})
@@ -137,7 +137,7 @@ export function createScene(canvas, quality) {
     uWake: lightsU.uWake,
     uLightTex: { value: ground.lights },
     uLightRect: { value: new THREE.Vector4(ground.rect.x, ground.rect.z, ground.rect.w, ground.rect.h) },
-  }, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED, near: closeUps })
+  }, { detail: quality.low ? 0 : 1, wakeSpeed: WAKE_SPEED, near: closeUps, models, low: quality.low })
   people.uniforms.uStage2.value.set(STAGE2.x - 3, STAGE2.z, 0.5)
   scene.add(ground.mesh, set.group, people.mesh, people.solo, crowd.group)
 
@@ -455,6 +455,7 @@ export function createScene(canvas, quality) {
     }
     handoff.commit()
 
+    people.update(camera)
     tags.update(camera, size.w, size.h, s.tags, navH)
     if (post) post.render(t, dt)
     else renderer.render(scene, camera)

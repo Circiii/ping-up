@@ -45,5 +45,8 @@ descărcarea merge oricum; doar mărimea și SHA-256-ul pot lipsi o vreme.
 - `src/data/venue.json`: harta festivalului, aceeași ca în aplicație.
 - `src/scene/`: scena 3D (Three.js): mulțimea și rețeaua, oamenii, scenele, construcțiile, pinul din logo, solul și harta.
 - `src/story.js`: ce se întâmplă în scenă la fiecare capitol, pe scroll.
+- `src/scene/people.dat`: oamenii din mulțime, personaje CC0 de la Quaternius puse cu telefonul ridicat, pe trei
+  trepte de detaliu. Se refac cu `npm run people` (`scripts/people.mjs` descarcă modelele și le coace).
 - `src/nav.js`: saltul la o secțiune, din bara de sus.
-- Fontul Inter (SIL Open Font License) și iconițele Phosphor (MIT); licențele sunt în `licenses/`.
+- Fontul Inter (SIL Open Font License), iconițele Phosphor (MIT) și oamenii Quaternius (CC0); licențele sunt în
+  `licenses/`.

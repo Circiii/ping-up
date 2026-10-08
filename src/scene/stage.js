@@ -1,7 +1,7 @@
 // Scenele festivalului: grinzi cu zabrele, acoperis, ecrane LED, boxe si reflectoare care se misca pe ritm.
 import * as THREE from 'three'
 import { aim, Batch, beam, box, glow, ledWall, lit, matte, merge, metal, place, truss, trussBetween } from './kit.js'
-import { personGeometry } from './people.js'
+import { performerGeometry, personGeometry } from './people.js'
 import { STAGE, STAGE2 } from './world.js'
 
 export const BPM = 124
@@ -10,10 +10,17 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z)
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 const smooth = (v) => { const u = clamp01(v); return u * u * (3 - 2 * u) }
 
-/** Un om pe scena, vazut doar ca silueta in fata ecranului. */
+/** Un om pe scena, vazut doar ca silueta in fata ecranului; cu personajele adevarate, cu mainile sus. */
+let cast = null
+const PERFORMERS = ['hoodie', 'punk', 'woman']
+let next = 0
 function performer(x, y, z, height, face) {
-  const g = place(personGeometry(1), 0, 0, 0, 0, face)
-  g.scale(height, height, height)
+  let g
+  if (cast) g = place(performerGeometry(cast, PERFORMERS[next++ % PERFORMERS.length], height * 1.06), 0, 0, 0, 0, face)
+  else {
+    g = place(personGeometry(1), 0, 0, 0, 0, face)
+    g.scale(height, height, height)
+  }
   g.translate(x, y, z)
   return g
 }
@@ -86,7 +93,9 @@ const LED_TEXT = {
   eq: [],
 }
 
-export function createStages(quality, time) {
+export function createStages(quality, time, models = null) {
+  cast = models
+  next = 0
   const group = new THREE.Group()
   const dark = matte('#0B0E0C')
   const deckMat = matte('#121613', 0.8)

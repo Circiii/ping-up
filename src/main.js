@@ -1,4 +1,5 @@
 import './style.css'
+import peopleUrl from './scene/people.dat?url'
 import { setupDownload } from './ui/download.js'
 
 setupDownload()
@@ -27,9 +28,11 @@ function quality() {
 async function start() {
   // scena se descarca in timp ce asteptam putin fontul: ecranele LED scriu cu Inter
   const parts = Promise.all([import('./scene/index.js'), import('./story.js'), import('./nav.js')])
+  // oamenii vin intr-un fisier separat; daca nu vin, raman siluetele simple
+  const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl)).catch(() => null)
   await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))])
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
-  const scene = createScene(canvas, quality())
+  const scene = createScene(canvas, quality(), await people)
   const story = createStory(scene, { reduce })
   // de aici capitolele stau pe loc si isi schimba textul; fara scena raman o pagina obisnuita.
   // Pana la primul cadru tranzitiile stau oprite: altfel textele tuturor capitolelor s-ar stinge unul peste altul.

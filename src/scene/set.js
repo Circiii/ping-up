@@ -129,13 +129,13 @@ function sky(time) {
   return { group, uniforms, starUniforms }
 }
 
-export function createSet(phones, quality) {
+export function createSet(phones, quality, models = null) {
   const rand = rng(31)
   const group = new THREE.Group()
   const time = { value: 0 }
 
   const heaven = sky(time)
-  const stages = createStages(quality, time)
+  const stages = createStages(quality, time, models)
   const props = createProps(quality, rand, time)
   const cell = cellLinks(phones, props.tower.top, quality.low ? 90 : 170, time)
   group.add(heaven.group, stages.group, props.group, cell.lines)
