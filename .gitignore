@@ -2,3 +2,10 @@ node_modules/
 dist/
 .vercel/
 .env*
+.DS_Store
+*.log
+
+# APK-ul vine din release-urile aplicatiei; cheile de semnare nu intra niciodata in git
+*.apk
+*.jks
+*.keystore
