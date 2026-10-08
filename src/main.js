@@ -31,8 +31,10 @@ async function start() {
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
   const scene = createScene(canvas, quality())
   const story = createStory(scene, { reduce })
-  // de aici capitolele stau pe loc si isi schimba textul; fara scena raman o pagina obisnuita
-  document.documentElement.classList.add('story-on')
+  // de aici capitolele stau pe loc si isi schimba textul; fara scena raman o pagina obisnuita.
+  // Pana la primul cadru tranzitiile stau oprite: altfel textele tuturor capitolelor s-ar stinge unul peste altul.
+  const root = document.documentElement
+  root.classList.add('story-snap', 'story-on')
 
   const fit = () => {
     scene.resize(canvas.clientWidth, canvas.clientHeight)
@@ -75,6 +77,10 @@ async function start() {
       draw(0)
     },
   })
+
+  // fiecare capitol trece direct in starea lui; abia de la cadrul urmator textele intra si ies animat
+  draw(0)
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('story-snap')))
 
   // daca placa video nu tine pasul: intai rezolutia, apoi stralucirea, apoi multimea rarita la jumatate.
   // Economia de baterie (iOS, Android) tine pagina la 30 de cadre pe secunda oricat de buna e placa, deci

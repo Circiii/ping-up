@@ -234,6 +234,7 @@ html.in-story .scrim { opacity: 1; }
   overflow: hidden;
 }
 html.story-on .chapter__stage { position: fixed; inset: 0; height: auto; pointer-events: none; }
+html.story-snap *, html.story-snap *::before, html.story-snap *::after { transition: none !important; }
 
 .copy { position: relative; max-width: 30rem; display: grid; gap: 20px; }
 .copy h2 {
