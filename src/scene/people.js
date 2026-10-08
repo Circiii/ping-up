@@ -313,6 +313,7 @@ const modelVertex = (wakeSpeed) => /* glsl */ `
   varying vec3 vScreen;
   varying vec3 vColor;
   varying vec2 vFace;
+  varying vec2 vUv;
   // rolul nu se amesteca intre varfuri: un triunghi simplificat poate lega parul de piele
   flat varying float vPart;
   varying float vSeed;
@@ -320,6 +321,7 @@ const modelVertex = (wakeSpeed) => /* glsl */ `
   varying float vPlain;
   ${BOUNCE}
   void main() {
+    vUv = uv;
     // cine are bratul liber ridicat il strange si il intinde pe ritm, cat canta scena
     float pump = 0.5 + 0.5 * sin(3.14159265 * (uBeat + aWho.x * 1.7));
     float dance = smoothstep(0.2, 0.9, pump) * min(1.0, uBob * 1.4);
@@ -366,6 +368,8 @@ const modelFragment = /* glsl */ `
   uniform vec2 uStageXZ, uPin;
   uniform vec3 uStage2;
   uniform vec4 uGlow;
+  uniform sampler2D uAtlas;
+  varying vec2 vUv;
   varying vec3 vN;
   varying vec3 vW;
   varying vec3 vLocal;
@@ -391,32 +395,29 @@ const modelFragment = /* glsl */ `
     if (k < 9.0) return vec3(0.07, 0.08, 0.03);
     return vec3(0.13, 0.22, 0.36);
   }
-  vec3 pants(float s) {
-    float k = floor(fract(s * 5.31) * 4.0);
-    if (k < 1.0) return vec3(0.03, 0.045, 0.09);
-    if (k < 2.0) return vec3(0.012);
-    if (k < 3.0) return vec3(0.16, 0.13, 0.08);
-    return vec3(0.06, 0.062, 0.066);
-  }
-  // parul: mai ales negru si saten, cateva blonde si roscate
-  vec3 hair(float s) {
-    float k = floor(fract(s * 17.9) * 8.0);
-    if (k < 3.0) return vec3(0.008, 0.006, 0.005);
-    if (k < 5.0) return vec3(0.035, 0.016, 0.008);
-    if (k < 6.0) return vec3(0.11, 0.055, 0.022);
-    if (k < 7.0) return vec3(0.4, 0.3, 0.12);
-    return vec3(0.17, 0.045, 0.015);
-  }
 
   void main() {
     vec3 N = normalize(vN);
+    #ifdef HAIR
+      // suvitele se vad din ambele parti: din spate, normala e intoarsa
+      if (!gl_FrontFacing) N = -N;
+    #endif
     vec3 V = normalize(cameraPosition - vW);
-    // culorile personajului, cu alte haine si alt ton al pielii pentru fiecare om
+    // hainele, fata si parul vin din atlas; telefonul isi are culorile lui
     vec3 base = vColor;
-    if (vPart < 0.5) base = mix(base, tee(vSeed), 0.9);
-    else if (vPart < 1.5) base *= 0.45 + 0.7 * fract(vSeed * 7.31);
-    else if (vPart < 2.5) base = mix(base, hair(vSeed), 0.85);
-    else if (vPart > 3.5 && vPart < 4.5) base = mix(base, pants(vSeed), 0.8);
+    bool phone = (vPart > 2.5 && vPart < 3.5) || vPart > 5.5;
+    if (!phone) {
+      vec4 tex = texture2D(uAtlas, vUv);
+      #ifdef HAIR
+        if (tex.a < 0.5) discard;
+      #endif
+      base = tex.rgb;
+      // jumatate din oameni poarta alt tricou: aceleasi cute si umbre din textura, alta culoare
+      if (vPart < 0.5 && fract(vSeed * 3.71) < 0.5) {
+        float lum = dot(base, vec3(0.2126, 0.7152, 0.0722)) / max(dot(vColor, vec3(0.2126, 0.7152, 0.0722)), 0.004);
+        base = tee(vSeed) * clamp(lum, 0.25, 2.5);
+      }
+    }
     base *= uAlbedo;
 
     // scena lumineaza din fata si de sus; aproape de ea e lumina multa, in spate aproape deloc
@@ -470,7 +471,7 @@ const modelFragment = /* glsl */ `
 `
 
 // Cat de des apare fiecare personaj in multime.
-const CAST = { hoodie: 1, casual: 1.2, beach: 0.55, punk: 0.45, woman: 1.2, tank: 0.85, wcasual: 1 }
+const CAST = { party: 1.1, party2: 1, hoodiegirl: 1, greentee: 1, tank: 0.8, graytee: 1, polo: 1, navy: 1, bluetee: 1, track: 0.9, hoodie: 1.1, redsleeve: 0.8 }
 const hash = (v) => Math.abs(Math.sin(v * 12.9898 + 78.233) * 43758.5453) % 1
 
 /**
@@ -496,8 +497,12 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
     uGlow: { value: new THREE.Vector4(0, 0, 0, 0) },
     uGlowCol: { value: new THREE.Color('#FF9F0A') },
     uAlbedo: { value: 0.5 },
+    uAtlas: { value: models.atlas },
   }
   const material = new THREE.ShaderMaterial({ vertexShader: modelVertex(wakeSpeed), fragmentShader: modelFragment, uniforms })
+  // suvitele de par: aceiasi oameni, dar cu pixelii transparenti aruncati; doar ele platesc pentru asta
+  const hairMaterial = new THREE.ShaderMaterial({ vertexShader: modelVertex(wakeSpeed), fragmentShader: modelFragment, uniforms, defines: { HAIR: '' }, side: THREE.DoubleSide })
+  const materials = [material, hairMaterial]
 
   // fiecare om primeste un personaj si o poza: cine tine telefonul sus filmeaza peste capete
   const total = models.chars.reduce((s, c) => s + (CAST[c.id] ?? 1), 0)
@@ -529,7 +534,8 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   const make = (geometry, count, morph = geometry) => {
     const geo = new THREE.InstancedBufferGeometry()
     geo.setIndex(geometry.index)
-    for (const name of ['position', 'normal', 'aColor', 'aRole', 'aScreen']) geo.setAttribute(name, geometry.attributes[name])
+    for (const g of geometry.groups) geo.addGroup(g.start, g.count, g.materialIndex)
+    for (const name of ['position', 'normal', 'aColor', 'aRole', 'aScreen', 'uv']) geo.setAttribute(name, geometry.attributes[name])
     geo.setAttribute('aPos2', morph.attributes.position)
     geo.setAttribute('aNrm2', morph.attributes.normal)
     geo.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3).setUsage(THREE.DynamicDrawUsage))
@@ -542,7 +548,7 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
     v.char.lods.map((lod) => {
       const morph = v.pose === 'cheer' && lod.poses.pump ? lod.poses.pump.geometry : undefined
       const geo = make(lod.poses[v.pose].geometry, v.people.length, morph)
-      const m = new THREE.Mesh(geo, material)
+      const m = new THREE.Mesh(geo, geo.groups.length ? materials : material)
       m.frustumCulled = false
       m.visible = false
       mesh.add(m)
@@ -670,7 +676,7 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   const walker = models.chars.find((c) => c.poses.includes('walk')) ?? models.chars[0]
   const soloGeo = make(walker.lods[0].poses[walker.poses.includes('walk') ? 'walk' : walker.poses[0]].geometry, 1)
   soloGeo.instanceCount = 1
-  const solo = new THREE.Mesh(soloGeo, material)
+  const solo = new THREE.Mesh(soloGeo, soloGeo.groups.length ? materials : material)
   solo.frustumCulled = false
   solo.visible = false
 
@@ -701,11 +707,14 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
 export function performerGeometry(models, id, height) {
   const c = models.chars.find((ch) => ch.id === id) ?? models.chars[0]
   const pose = c.poses.includes('cheer') ? 'cheer' : c.poses[0]
-  const { geometry, height: top } = c.lods[0].poses[pose]
+  const lod = c.lods[0]
+  const { geometry, height: top } = lod.poses[pose]
   const body = new THREE.BufferGeometry()
   body.setAttribute('position', geometry.attributes.position)
   body.setAttribute('normal', geometry.attributes.normal)
-  body.setIndex(new THREE.BufferAttribute(geometry.index.array.slice(0, c.lods[0].bodyIndexCount), 1))
+  // corpul si suvitele de par, fara telefon
+  const idx = geometry.index.array
+  body.setIndex(new THREE.BufferAttribute(Uint32Array.from([...idx.slice(0, lod.bodyIndexCount), ...idx.slice(lod.hairStart, lod.hairStart + lod.hairCount)]), 1))
   const g = body.toNonIndexed()
   g.scale(height / top, height / top, height / top)
   return g

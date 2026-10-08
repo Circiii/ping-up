@@ -44,6 +44,29 @@ test('the phone sits at (0, 1, 0) and the feet on the ground, in every pose', ()
   }
 })
 
+test('every vertex points into the atlas, and long hair is drawn as its own group', () => {
+  assert.equal(people.atlasSize.width, 1024)
+  let withHair = 0
+  for (const c of people.chars) {
+    for (const [level, lod] of c.lods.entries()) {
+      const { geometry } = lod.poses.high
+      const uv = geometry.attributes.uv
+      assert.ok(uv, `${c.id}: fara UV`)
+      for (let i = 0; i < uv.count; i++) {
+        assert.ok(uv.getX(i) >= 0 && uv.getX(i) <= 1 && uv.getY(i) >= 0 && uv.getY(i) <= 1, `${c.id}: UV in afara atlasului`)
+      }
+      // suvitele de par doar de aproape; restul se deseneaza dintr-o singura trecere
+      if (level > 0) assert.equal(geometry.groups.length, 0, `${c.id}/${level}: grupuri`)
+      else if (lod.hairCount) {
+        withHair++
+        assert.equal(geometry.groups[1].start, lod.hairStart)
+        assert.equal(geometry.groups[1].start + geometry.groups[1].count, geometry.index.count)
+      }
+    }
+  }
+  assert.ok(withHair >= 5, `doar ${withHair} cu par din suvite`)
+})
+
 test('screen coordinates stay within the glass', () => {
   for (const c of people.chars) {
     const { geometry } = c.lods[0].poses.high

@@ -1,151 +1,216 @@
-// Oamenii din multime: personaje CC0 de la Quaternius (prin Poly Pizza), puse in pozele de la concert, cu telefonul
-// ridicat, simplificate pe trepte de detaliu si scrise intr-un singur fisier mic: src/scene/people.dat (gzip).
-// Folosire: npm run people   (modelele se descarca o singura data, in node_modules/.cache/people)
+// Oamenii din multime: personaje Microsoft Rocketbox (MIT), puse in pozele de la concert, cu telefonul ridicat,
+// simplificate pe trepte de detaliu. Ies doua fisiere mici: src/scene/people.dat (geometria, gzip) si
+// src/scene/people.webp (hainele, fetele si parul tuturor, intr-un singur atlas).
+// Folosire: npm run people   (modelele se descarca o singura data, in node_modules/.cache/people; atlasul il scrie
+// ImageMagick, `magick`, care trebuie sa fie instalat)
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { gzipSync, inflateSync } from 'node:zlib'
+import { gzipSync } from 'node:zlib'
 import { MeshoptSimplifier } from 'meshoptimizer'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 
 const site = fileURLToPath(new URL('..', import.meta.url))
-const CACHE = resolve(site, 'node_modules/.cache/people')
+const CACHE = resolve(site, 'node_modules/.cache/people/rocketbox')
 const OUT = resolve(site, 'src/scene/people.dat')
+const ATLAS = resolve(site, 'src/scene/people.webp')
+const REPO = 'https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/master/Assets'
 
-// Toate sunt CC0 (domeniu public), de la Quaternius: https://poly.pizza/u/Quaternius
+// Oameni in haine de festival, din https://github.com/microsoft/Microsoft-Rocketbox (MIT)
 const CHARACTERS = [
-  { id: 'hoodie', file: 'bcd66ec5-5e81-4901-a222-47abc875fe2a', title: 'Hoodie Character' },
-  { id: 'casual', file: '90a9e2d4-053f-42f1-99a2-8f5e1180ea7f', title: 'Casual Character' },
-  { id: 'beach', file: 'f771a536-1c18-4a47-bb56-ceea4b603455', title: 'Beach Character' },
-  { id: 'punk', file: 'e56f23b5-3270-406f-8924-f77cad980c43', title: 'Punk' },
-  { id: 'woman', file: 'cf08b740-dd48-443e-9fde-6d3d54abf119', title: 'Animated Woman' },
-  { id: 'tank', file: '9a6a3e55-23ce-4d5c-89bc-7d3f30307ed0', title: 'Woman in Tank Top' },
-  { id: 'wcasual', file: '51d5abdd-bb87-4b8d-9967-21738ffb8437', title: 'Woman Casual' },
+  { id: 'party', dir: 'Female_Party_01', tex: 'f010', sex: 'f' },
+  { id: 'party2', dir: 'Female_Party_02', tex: 'f022', sex: 'f' },
+  { id: 'hoodiegirl', dir: 'Female_Adult_12', tex: 'f012', sex: 'f' },
+  { id: 'greentee', dir: 'Female_Adult_17', tex: 'f006', sex: 'f' },
+  { id: 'tank', dir: 'Female_Adult_03', tex: 'f003', sex: 'f' },
+  { id: 'graytee', dir: 'Female_Adult_08', tex: 'f008', sex: 'f' },
+  { id: 'polo', dir: 'Male_Adult_01', tex: 'm002', sex: 'm' },
+  { id: 'navy', dir: 'Male_Adult_09', tex: 'm017', sex: 'm' },
+  { id: 'bluetee', dir: 'Male_Adult_16', tex: 'm019', sex: 'm' },
+  { id: 'track', dir: 'Male_Adult_17', tex: 'm022', sex: 'm' },
+  { id: 'hoodie', dir: 'Male_Adult_18', tex: 'm023', sex: 'm' },
+  { id: 'redsleeve', dir: 'Male_Adult_06', tex: 'm011', sex: 'm' },
 ]
+// miscarile din aceeasi biblioteca: din ele vin poza de repaus a fiecaruia si pasul celui care merge
+const CLIPS = {
+  f: { idle: 'static/f_idle_neutral_01', walk: 'xy/f_walk_neutral_01' },
+  m: { idle: 'static/m_idle_neutral_01', walk: 'xy/m_walk_neutral_01' },
+}
 
-// Rolurile varfurilor: dupa ele, scena da fiecarui om alte haine si alt ton al pielii.
+// Rolurile varfurilor: dupa ele, scena da unora alte haine si stie unde e parul si telefonul.
 const ROLE = { top: 0, skin: 1, hair: 2, screen: 3, bottom: 4, shoes: 5, dark: 6 }
+const MAT = { body: 0, head: 1, hair: 2 }
 
-// Trepte de detaliu, in triunghiuri: de aproape, din multime si de departe (pe telefoane).
-const LODS = [1100, 220, 80]
+// Trepte de detaliu, in triunghiuri (corp si cap): de aproape, din multime si de departe. Parul din suvite apare
+// doar de aproape; mai departe ramane cel pictat pe cap.
+const LODS = [950, 220, 80]
+const HAIR = 130
+
+// Atlasul: pentru fiecare om, corpul (256 px), capul si parul (cate 128 px), patru oameni pe rand.
+const SLOT = { w: 256, h: 384 }
+const COLS = 4
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z)
 
 // ---------------------------------------------------------------- fisierele
 
-async function source(c) {
+async function cached(url, name, optional = false) {
   mkdirSync(CACHE, { recursive: true })
-  const path = resolve(CACHE, `${c.id}.glb`)
+  const path = resolve(CACHE, name)
+  const none = `${path}.none`
+  if (optional && existsSync(none)) return null
   if (!existsSync(path)) {
-    const res = await fetch(`https://static.poly.pizza/${c.file}.glb`)
-    if (!res.ok) throw new Error(`${c.title}: ${res.status}`)
+    const res = await fetch(url)
+    if (res.status === 404 && optional) {
+      writeFileSync(none, '')
+      return null
+    }
+    if (!res.ok) throw new Error(`${url}: ${res.status}`)
     writeFileSync(path, Buffer.from(await res.arrayBuffer()))
   }
   return readFileSync(path)
 }
 
-/** GLB-ul desfacut in JSON si bucata binara. */
-function readGlb(buf) {
-  const json = JSON.parse(buf.toString('utf8', 20, 20 + buf.readUInt32LE(12)))
-  const at = 20 + buf.readUInt32LE(12)
-  const bin = buf.subarray(at + 8, at + 8 + buf.readUInt32LE(at))
-  return { json, bin }
+// FBXLoader ar incarca si texturile prin DOM; aici le citim separat, din TGA
+THREE.TextureLoader.prototype.load = () => new THREE.Texture()
+const quiet = console.warn
+function parseFbx(buf) {
+  console.warn = () => {}
+  try {
+    return new FBXLoader().parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), '')
+  } finally {
+    console.warn = quiet
+  }
 }
 
-function writeGlb(json, bin) {
-  const text = Buffer.from(JSON.stringify(json))
-  const jsonChunk = Buffer.concat([text, Buffer.alloc((4 - (text.length % 4)) % 4, 0x20)])
-  const binChunk = Buffer.concat([bin, Buffer.alloc((4 - (bin.length % 4)) % 4)])
-  const head = Buffer.alloc(12)
-  head.write('glTF', 0)
-  head.writeUInt32LE(2, 4)
-  head.writeUInt32LE(12 + 8 + jsonChunk.length + 8 + binChunk.length, 8)
-  const chunk = (data, type) => {
-    const h = Buffer.alloc(8)
-    h.writeUInt32LE(data.length, 0)
-    h.write(type, 4)
-    return Buffer.concat([h, data])
+/** TGA truecolor (necomprimat sau RLE), intors cu randurile de sus in jos, in RGBA. */
+function decodeTga(buf) {
+  const idLen = buf[0]
+  const type = buf[2]
+  const w = buf.readUInt16LE(12)
+  const h = buf.readUInt16LE(14)
+  const bpp = buf[16] / 8
+  if (buf[1] !== 0 || (type !== 2 && type !== 10) || (bpp !== 3 && bpp !== 4)) throw new Error('TGA: doar truecolor pe 24 sau 32 de biti')
+  const topDown = (buf[17] & 0x20) !== 0
+  const out = new Uint8Array(w * h * 4)
+  const put = (i, at) => {
+    const x = i % w
+    const y = (i - x) / w
+    const o = ((topDown ? y : h - 1 - y) * w + x) * 4
+    out[o] = buf[at + 2]
+    out[o + 1] = buf[at + 1]
+    out[o + 2] = buf[at]
+    out[o + 3] = bpp === 4 ? buf[at + 3] : 255
   }
-  return Buffer.concat([head, chunk(jsonChunk, 'JSON'), chunk(binChunk, 'BIN\0')])
-}
-
-/** PNG necomprimat in RGBA, destul pentru paletele de 32 x 32 ale personajelor. */
-function decodePng(buf) {
-  let at = 8
-  let width = 0
-  let height = 0
-  let type = 0
-  const data = []
-  while (at < buf.length) {
-    const len = buf.readUInt32BE(at)
-    const kind = buf.toString('ascii', at + 4, at + 8)
-    const body = buf.subarray(at + 8, at + 8 + len)
-    if (kind === 'IHDR') {
-      width = body.readUInt32BE(0)
-      height = body.readUInt32BE(4)
-      if (body[8] !== 8 || body[12] !== 0) throw new Error('PNG: doar 8 biti, fara intretesere')
-      type = body[9]
-    } else if (kind === 'IDAT') data.push(body)
-    at += 12 + len
-  }
-  const bpp = { 2: 3, 6: 4, 0: 1, 4: 2 }[type]
-  const raw = inflateSync(Buffer.concat(data))
-  const stride = width * bpp
-  const out = new Uint8Array(width * height * 4)
-  const prev = new Uint8Array(stride)
-  const row = new Uint8Array(stride)
-  for (let y = 0; y < height; y++) {
-    const f = raw[y * (stride + 1)]
-    for (let x = 0; x < stride; x++) {
-      const v = raw[y * (stride + 1) + 1 + x]
-      const a = x >= bpp ? row[x - bpp] : 0
-      const b = prev[x]
-      const c = x >= bpp ? prev[x - bpp] : 0
-      let p = v
-      if (f === 1) p = v + a
-      else if (f === 2) p = v + b
-      else if (f === 3) p = v + ((a + b) >> 1)
-      else if (f === 4) {
-        const pa = Math.abs(b - c)
-        const pb = Math.abs(a - c)
-        const pc = Math.abs(a + b - 2 * c)
-        p = v + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)
+  let at = 18 + idLen
+  if (type === 2) {
+    for (let i = 0; i < w * h; i++, at += bpp) put(i, at)
+  } else {
+    for (let i = 0; i < w * h; ) {
+      const head = buf[at++]
+      const n = (head & 0x7f) + 1
+      if (head & 0x80) {
+        for (let k = 0; k < n; k++) put(i++, at)
+        at += bpp
+      } else {
+        for (let k = 0; k < n; k++, at += bpp) put(i++, at)
       }
-      row[x] = p & 255
     }
-    for (let x = 0; x < width; x++) {
-      const s = x * bpp
-      const o = (y * width + x) * 4
-      if (bpp >= 3) out.set([row[s], row[s + 1], row[s + 2], bpp === 4 ? row[s + 3] : 255], o)
-      else out.set([row[s], row[s], row[s], 255], o)
-    }
-    prev.set(row)
   }
-  return { width, height, data: out }
+  return { width: w, height: h, data: out }
 }
 
-/** Personajul incarcat in three.js, fara texturi (paleta, daca are, ramane deoparte, pentru culori). */
-async function load(c) {
-  const { json, bin } = readGlb(await source(c))
-  let palette = null
-  if (json.images?.length) {
-    const view = json.bufferViews[json.images[0].bufferView]
-    palette = decodePng(Buffer.from(bin.buffer, bin.byteOffset + (view.byteOffset ?? 0), view.byteLength))
-    for (const m of json.materials ?? []) if (m.pbrMetallicRoughness) delete m.pbrMetallicRoughness.baseColorTexture
-    delete json.images
-    delete json.textures
-    delete json.samplers
+/** Micsorare prin medie pe blocuri; culoarea se mediaza ponderat cu opacitatea, ca marginile parului sa nu se innegreasca. */
+function shrink(img, size) {
+  const k = img.width / size
+  const out = new Uint8Array(size * size * 4)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let r = 0
+      let g = 0
+      let b = 0
+      let a = 0
+      for (let j = 0; j < k; j++) {
+        for (let i = 0; i < k; i++) {
+          const o = ((y * k + j) * img.width + x * k + i) * 4
+          const w = img.data[o + 3]
+          r += img.data[o] * w
+          g += img.data[o + 1] * w
+          b += img.data[o + 2] * w
+          a += w
+        }
+      }
+      const o = (y * size + x) * 4
+      if (a > 0) out.set([r / a, g / a, b / a, a / (k * k)], o)
+    }
   }
-  const glb = writeGlb(json, Buffer.from(bin))
-  const gltf = await new GLTFLoader().parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '')
-  return { gltf, palette }
+  return { width: size, height: size, data: out }
+}
+
+/**
+ * Pixelii pe care nu cade niciun triunghi primesc culoarea celui mai apropiat pixel folosit: la distanta, cand
+ * placa video amesteca pixelii vecini, marginile hainelor nu mai iau negrul din jur.
+ */
+function bleed(img, used) {
+  const n = img.width * img.height
+  const queue = new Int32Array(n)
+  let head = 0
+  let tail = 0
+  const seen = Uint8Array.from(used)
+  for (let i = 0; i < n; i++) if (seen[i]) queue[tail++] = i
+  while (head < tail) {
+    const i = queue[head++]
+    const x = i % img.width
+    const y = (i - x) / img.width
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= img.width || ny >= img.height) continue
+      const j = ny * img.width + nx
+      if (seen[j]) continue
+      seen[j] = 1
+      img.data.copyWithin(j * 4, i * 4, i * 4 + 3)
+      queue[tail++] = j
+    }
+  }
+}
+
+/** Ce pixeli ai texturii (de marimea `size`) sunt acoperiti de triunghiurile date, cu un pixel in plus pe margine. */
+function coverage(size, tris) {
+  const used = new Uint8Array(size * size)
+  for (const [a, b, c] of tris) {
+    const xs = [a[0], b[0], c[0]].map((u) => u * size)
+    const ys = [a[1], b[1], c[1]].map((v) => (1 - v) * size)
+    const x0 = Math.max(0, Math.floor(Math.min(...xs)) - 1)
+    const x1 = Math.min(size - 1, Math.ceil(Math.max(...xs)) + 1)
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)) - 1)
+    const y1 = Math.min(size - 1, Math.ceil(Math.max(...ys)) + 1)
+    const area = (xs[1] - xs[0]) * (ys[2] - ys[0]) - (xs[2] - xs[0]) * (ys[1] - ys[0])
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (Math.abs(area) < 1e-9) {
+          used[y * size + x] = 1
+          continue
+        }
+        const px = x + 0.5
+        const py = y + 0.5
+        const w0 = ((xs[1] - px) * (ys[2] - py) - (xs[2] - px) * (ys[1] - py)) / area
+        const w1 = ((xs[2] - px) * (ys[0] - py) - (xs[0] - px) * (ys[2] - py)) / area
+        const w2 = 1 - w0 - w1
+        // un pixel de toleranta: si pixelii atinsi doar de margine raman ai triunghiului
+        const tol = 1.5 / Math.max(1, Math.sqrt(Math.abs(area)))
+        if (w0 >= -tol && w1 >= -tol && w2 >= -tol) used[y * size + x] = 1
+      }
+    }
+  }
+  return used
 }
 
 // ---------------------------------------------------------------- poza
 
-const bone = (bones, re) => bones.find((b) => re.test(b.name))
 const worldPos = (o) => o.getWorldPosition(v3())
 
 /** Roteste osul ca directia `from` (din lume) sa ajunga `to`. */
@@ -173,25 +238,27 @@ function reach(upper, lower, hand, target, pole) {
   turn(lower, worldPos(hand).sub(e), s.clone().addScaledVector(dir, d).sub(e))
 }
 
-function rigOf(gltf) {
-  const bones = []
-  gltf.scene.traverse((o) => { if (o.isBone) bones.push(o) })
-  const find = (...res) => {
-    for (const re of res) {
-      const b = bone(bones, re)
-      if (b) return b
-    }
-    throw new Error(`os lipsa: ${res.join(' / ')}`)
+function rigOf(root) {
+  const turnRoot = root.quaternion.clone()
+  const bones = new Map()
+  root.traverse((o) => { if (o.isBone) bones.set(o.name, o) })
+  const get = (name) => {
+    const b = bones.get(name)
+    if (!b) throw new Error(`os lipsa: ${name}`)
+    return b
   }
   return {
-    rest: bones.map((b) => [b, { position: b.position.clone(), quaternion: b.quaternion.clone(), scale: b.scale.clone() }]),
-    head: find(/^Head$/),
-    rUpper: find(/^UpperArmR$/, /^RightArm$/),
-    rLower: find(/^LowerArmR$/, /^RightForeArm$/),
-    rHand: find(/^WristR$/, /^PalmR$/, /^RightHand$/),
-    lUpper: find(/^UpperArmL$/, /^LeftArm$/),
-    lLower: find(/^LowerArmL$/, /^LeftForeArm$/),
-    lHand: find(/^WristL$/, /^PalmL$/, /^LeftHand$/),
+    root,
+    turnRoot,
+    rest: [...bones.values()].map((b) => [b, { position: b.position.clone(), quaternion: b.quaternion.clone(), scale: b.scale.clone() }]),
+    head: get('Bip01_Head'),
+    nose: get('Bip01_MNose'),
+    rUpper: get('Bip01_R_UpperArm'),
+    rLower: get('Bip01_R_Forearm'),
+    rHand: get('Bip01_R_Hand'),
+    lUpper: get('Bip01_L_UpperArm'),
+    lLower: get('Bip01_L_Forearm'),
+    lHand: get('Bip01_L_Hand'),
   }
 }
 
@@ -205,27 +272,33 @@ const POSES = {
   cheer: { right: [0.08, 0.3, 0.16], left: [-0.2, 0.62, 0.1] },
   // acelasi brat ridicat, indoit: pumnul langa cap; scena trece intre cele doua pe ritm
   pump: { right: [0.08, 0.3, 0.16], left: [-0.22, -0.02, 0.18] },
-  walk: { right: [0.1, -0.12, 0.24] },
+  walk: { right: [0.08, -0.26, 0.28] },
 }
 
-function clipFor(gltf, re) {
-  return gltf.animations.find((a) => re.test(a.name)) ?? gltf.animations[0]
+/** Doar rotatiile oaselor: lungimea lor ramane a personajului, nu a celui pe care s-a filmat miscarea. */
+function rotationsOnly(clip) {
+  return new THREE.AnimationClip(clip.name, clip.duration, clip.tracks.filter((t) => t.name.startsWith('Bip01') && t.name.endsWith('.quaternion')))
 }
 
 /** Pune personajul intr-o poza; intoarce punctele de care e nevoie pentru telefon. */
-function pose(gltf, rig, name, mixer, refs) {
+function pose(root, rig, name, clips, refs) {
   const p = POSES[name]
-  // oasele pe care animatia nu le misca ar pastra altfel poza de dinainte
+  root.quaternion.copy(rig.turnRoot)
   for (const [b, t] of rig.rest) {
     b.position.copy(t.position)
     b.quaternion.copy(t.quaternion)
     b.scale.copy(t.scale)
   }
-  mixer.stopAllAction()
-  const clip = name === 'walk' ? clipFor(gltf, /(^|\|)(Female_)?Walk(ing)?$/) : clipFor(gltf, /(^|\|)(Female_)?Idle$/)
-  mixer.clipAction(clip).reset().play()
-  mixer.setTime(name === 'walk' ? clip.duration * 0.25 : 0.4)
-  gltf.scene.updateMatrixWorld(true)
+  const mixer = new THREE.AnimationMixer(root)
+  const clip = name === 'walk' ? clips.walk : clips.idle
+  mixer.clipAction(clip).play()
+  mixer.setTime(name === 'walk' ? clip.duration * 0.27 : Math.min(0.6, clip.duration * 0.2))
+  root.updateMatrixWorld(true)
+  // miscarea il poate intoarce: il rotim pe loc, cu fata (nasul) spre +z, inainte de brate
+  const look = worldPos(rig.nose).sub(worldPos(rig.head))
+  const yaw = Math.atan2(look.x, look.z)
+  root.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(v3(0, 1, 0), -yaw))
+  root.updateMatrixWorld(true)
 
   // inaltimea din varfurile pozate: cutia obiectelor nu vede scara scheletului
   const P = posed(refs)
@@ -236,88 +309,85 @@ function pose(gltf, rig, name, mixer, refs) {
     y1 = Math.max(y1, P[i])
   }
   const hs = (y1 - y0) / 1.8
-  // dreapta personajului: de partea umarului drept
-  const rightSign = Math.sign(worldPos(rig.rUpper).x - worldPos(rig.lUpper).x) || -1
+  // dreapta: de partea umarului drept
   const head = worldPos(rig.head)
+  const rightSign = Math.sign(worldPos(rig.rUpper).x - worldPos(rig.lUpper).x) || -1
   const eye = head.clone().add(v3(0, 0.07 * hs, 0.09 * hs))
   const at = ([x, y, z]) => eye.clone().add(v3(x * rightSign * hs, y * hs, z * hs))
   const down = v3(0, -1, 0)
-
   reach(rig.rUpper, rig.rLower, rig.rHand, at(p.right), v3(rightSign * 0.9, 0, -0.25).add(down))
   if (p.left) reach(rig.lUpper, rig.lLower, rig.lHand, at(p.left), v3(-rightSign * 0.9, 0, -0.25).add(down))
-  gltf.scene.updateMatrixWorld(true)
+  root.updateMatrixWorld(true)
   return { hs, eye, rightSign }
 }
 
 // ---------------------------------------------------------------- geometria
 
-// pielea: rosul trece clar de verde, verdele de albastru (parul blond are rosul aproape cat verdele)
-const skinLike = (r, g, b) => r > 0.35 && r > g + 0.08 && g > b + 0.05 && r - b < 0.55
+// pielea: rosul trece clar de verde, verdele de albastru
+const skinLike = (r, g, b) => r > 0.35 && r > g + 0.06 && g > b + 0.03 && r - b < 0.55
 
-function roleOf(mesh, color, joint) {
-  const m = mesh.material.name
-  const n = mesh.name
-  if (/skin/i.test(m)) return ROLE.skin
-  if (/hair|eyebrow/i.test(m)) return ROLE.hair
-  if (/eye/i.test(m)) return ROLE.dark
-  if (/shoe/i.test(m) || /feet/i.test(n)) return ROLE.shoes
-  if (/pants|sock|short/i.test(m) || /legs/i.test(n)) return ROLE.bottom
-  if (m !== 'Material') return ROLE.top
-  // personaj pictat dintr-o paleta: rolul vine din os si din culoare
+function roleOf(mat, color, joint) {
   const [r, g, b] = color
-  if (/Head|Neck/.test(joint)) return skinLike(r, g, b) ? ROLE.skin : ROLE.hair
-  if (/Hand/.test(joint)) return ROLE.skin
-  if (/Foot|Toe/.test(joint)) return ROLE.shoes
-  if (/UpLeg|Leg$|Hips/.test(joint)) return ROLE.bottom
+  if (mat === MAT.hair) return ROLE.hair
+  if (mat === MAT.head) return skinLike(r, g, b) ? ROLE.skin : ROLE.hair
+  if (/Hand|Finger/.test(joint)) return ROLE.skin
+  if (/Foot|Toe/.test(joint)) return skinLike(r, g, b) ? ROLE.skin : ROLE.shoes
+  if (/Thigh|Calf|Pelvis/.test(joint)) return skinLike(r, g, b) ? ROLE.skin : ROLE.bottom
   return skinLike(r, g, b) ? ROLE.skin : ROLE.top
 }
 
-const srgb = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055)
-const linear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
+/** Culoarea texturii la un UV, ca sa stim rolul varfului (piele sau haine). */
+function sample(img, u, v) {
+  const x = Math.min(img.width - 1, Math.max(0, Math.floor(u * img.width)))
+  const y = Math.min(img.height - 1, Math.max(0, Math.floor((1 - v) * img.height)))
+  const o = (y * img.width + x) * 4
+  return [img.data[o] / 255, img.data[o + 1] / 255, img.data[o + 2] / 255]
+}
 
-/** Varfurile originale (plasa, indice), cu culoarea sRGB pe 8 biti si rolul lor, plus triunghiurile. */
-function collect(gltf, palette) {
+/**
+ * Varfurile unite (aceeasi pozitie, acelasi UV, acelasi material): plasa din FBX vine cu fiecare triunghi separat.
+ * Fiecare varf tine minte varful lui din FBX, pentru oase.
+ */
+function collect(mesh, images) {
+  const g = mesh.geometry
+  const P = g.attributes.position
+  const UV = g.attributes.uv
+  const matOf = new Int8Array(P.count)
+  for (const gr of g.groups) matOf.fill(gr.materialIndex, gr.start, gr.start + gr.count)
+  const skinIndex = g.attributes.skinIndex
+  const skinWeight = g.attributes.skinWeight
+  const map = new Map()
   const refs = []
-  const index = []
-  gltf.scene.traverse((mesh) => {
-    if (!mesh.isMesh) return
-    const g = mesh.geometry
-    const P = g.attributes.position
-    const uv = g.attributes.uv
-    const skinIndex = g.attributes.skinIndex
-    const skinWeight = g.attributes.skinWeight
-    const base = mesh.material.color
-    const offset = refs.length
-    for (let i = 0; i < P.count; i++) {
-      let r = base.r
-      let gg = base.g
-      let b = base.b
-      if (palette && uv) {
-        const px = Math.min(palette.width - 1, Math.max(0, Math.floor(uv.getX(i) * palette.width)))
-        const py = Math.min(palette.height - 1, Math.max(0, Math.floor(uv.getY(i) * palette.height)))
-        const o = (py * palette.width + px) * 4
-        r *= linear(palette.data[o] / 255)
-        gg *= linear(palette.data[o + 1] / 255)
-        b *= linear(palette.data[o + 2] / 255)
-      }
-      const color = [srgb(r), srgb(gg), srgb(b)].map((c) => Math.round(Math.min(1, Math.max(0, c)) * 255))
-      let joint = ''
-      if (mesh.isSkinnedMesh) {
+  const tris = [[], [], []]
+  for (let t = 0; t < P.count; t += 3) {
+    const ids = []
+    for (let k = 0; k < 3; k++) {
+      const i = t + k
+      const mat = matOf[i]
+      const u = UV.getX(i)
+      const v = UV.getY(i)
+      const key = `${Math.round(P.getX(i) * 100)},${Math.round(P.getY(i) * 100)},${Math.round(P.getZ(i) * 100)}|${Math.round(u * 1e4)},${Math.round(v * 1e4)}|${mat}`
+      let j = map.get(key)
+      if (j === undefined) {
+        j = refs.length
+        map.set(key, j)
+        let joint = ''
         let best = 0
-        for (let k = 0; k < 4; k++) {
-          const w = skinWeight.getComponent(i, k)
+        for (let c = 0; c < 4; c++) {
+          const w = skinWeight.getComponent(i, c)
           if (w > best) {
             best = w
-            joint = mesh.skeleton.bones[skinIndex.getComponent(i, k)]?.name ?? ''
+            joint = mesh.skeleton.bones[skinIndex.getComponent(i, c)]?.name ?? ''
           }
         }
+        const color = sample(images[mat], u, v)
+        refs.push({ mesh, i, mat, u: Math.min(1, Math.max(0, u)), v: Math.min(1, Math.max(0, v)), color, role: roleOf(mat, color, joint) })
       }
-      refs.push({ mesh, i, color, role: roleOf(mesh, color.map((c) => c / 255), joint) })
+      ids.push(j)
     }
-    if (g.index) for (let i = 0; i < g.index.count; i++) index.push(offset + g.index.getX(i))
-    else for (let i = 0; i < P.count; i++) index.push(offset + i)
-  })
-  return { refs, index }
+    if (ids[0] !== ids[1] && ids[1] !== ids[2] && ids[0] !== ids[2]) tris[refs[ids[0]].mat].push(...ids)
+  }
+  return { refs, tris }
 }
 
 /** Pozitiile varfurilor in poza curenta a scheletului. */
@@ -326,65 +396,26 @@ function posed(refs) {
   const v = v3()
   refs.forEach(({ mesh, i }, k) => {
     v.fromBufferAttribute(mesh.geometry.attributes.position, i)
-    if (mesh.isSkinnedMesh) mesh.applyBoneTransform(i, v)
+    mesh.applyBoneTransform(i, v)
     v.applyMatrix4(mesh.matrixWorld)
     out.set([v.x, v.y, v.z], k * 3)
   })
   return out
 }
 
-const keyOf = (pos, i) => `${Math.round(pos[i * 3] * 1e4)},${Math.round(pos[i * 3 + 1] * 1e4)},${Math.round(pos[i * 3 + 2] * 1e4)}`
-
-/** Varfurile identice (pozitie, culoare, rol) se unesc; restul raman cusaturi pe care simplificarea le respecta. */
-function weld(refs, pos, index) {
-  const map = new Map()
-  const keep = []
-  const remap = []
-  refs.forEach((r, i) => {
-    const key = `${keyOf(pos, i)}|${r.role}|${r.color.join(',')}`
-    let j = map.get(key)
-    if (j === undefined) {
-      j = keep.length
-      map.set(key, j)
-      keep.push(i)
-    }
-    remap.push(j)
-  })
-  const tris = []
-  for (let t = 0; t < index.length; t += 3) {
-    const a = remap[index[t]]
-    const b = remap[index[t + 1]]
-    const c = remap[index[t + 2]]
-    if (a !== b && b !== c && a !== c) tris.push(a, b, c)
-  }
-  return { refs: keep.map((i) => refs[i]), pos: Float32Array.from(keep.flatMap((i) => [pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]])), index: tris }
-}
-
-/** O treapta de detaliu, simplificata in poza de repaus: ce varfuri raman si triunghiurile lor, renumerotate. */
-function simplify(body, target) {
-  let index = Uint32Array.from(body.index)
+/** O treapta de detaliu pentru o parte (corp si cap, sau par): triunghiurile ramase, cu varfurile din `refs`. */
+function simplify(refs, pos, tris, target) {
+  let index = Uint32Array.from(tris)
   if (index.length / 3 > target) {
-    const n = body.refs.length
-    const attrs = new Float32Array(n * 4)
-    body.refs.forEach((r, i) => attrs.set([r.color[0] / 255, r.color[1] / 255, r.color[2] / 255, r.role * 0.25], i * 4))
-    ;[index] = MeshoptSimplifier.simplifyWithAttributes(index, body.pos, 3, attrs, 4, [0.6, 0.6, 0.6, 1.5], null, target * 3, 0.2, [])
-    if (index.length / 3 > target * 1.4) [index] = MeshoptSimplifier.simplifySloppy(index, body.pos, 3, null, target * 3, 0.1)
+    const attrs = new Float32Array(refs.length * 3)
+    refs.forEach((r, i) => attrs.set([r.u, r.v, r.role * 0.25], i * 3))
+    ;[index] = MeshoptSimplifier.simplifyWithAttributes(index, pos, 3, attrs, 3, [1, 1, 1.5], null, target * 3, 0.25, [])
+    if (index.length / 3 > target * 1.4) [index] = MeshoptSimplifier.simplifySloppy(index, pos, 3, null, target * 3, 0.1)
   }
-  // varfurile renumerotate in ordinea primei folosiri: diferentele mici se comprima bine
-  const used = new Map()
-  const keep = []
-  const tris = []
-  for (const i of index) {
-    let j = used.get(i)
-    if (j === undefined) {
-      j = keep.length
-      used.set(i, j)
-      keep.push(i)
-    }
-    tris.push(j)
-  }
-  return { keep, index: tris }
+  return Array.from(index)
 }
+
+const keyOf = (pos, i) => `${Math.round(pos[i * 3] * 1e4)},${Math.round(pos[i * 3 + 1] * 1e4)},${Math.round(pos[i * 3 + 2] * 1e4)}`
 
 /** Normale netede, aceleasi de o parte si de alta a unei cusaturi: de aproape omul nu mai arata facut din fete. */
 function smoothNormals(pos, index) {
@@ -461,52 +492,147 @@ function oct(x, y, z) {
   return [Math.round(u * 127), Math.round(v * 127)]
 }
 
+// ---------------------------------------------------------------- atlasul
+
+const rows = Math.ceil(CHARACTERS.length / COLS)
+const atlas = { width: COLS * SLOT.w, height: rows * SLOT.h }
+const atlasData = new Uint8Array(atlas.width * atlas.height * 4)
+
+/** Unde sta in atlas fiecare textura a omului `n`: x, y (de sus), marime. */
+function rectOf(n, mat) {
+  const x = (n % COLS) * SLOT.w
+  const y = Math.floor(n / COLS) * SLOT.h
+  if (mat === MAT.body) return { x, y, size: 256 }
+  if (mat === MAT.head) return { x, y: y + 256, size: 128 }
+  return { x: x + 128, y: y + 256, size: 128 }
+}
+
+function paste(img, rect) {
+  for (let y = 0; y < img.height; y++) {
+    atlasData.set(img.data.subarray(y * img.width * 4, (y + 1) * img.width * 4), ((rect.y + y) * atlas.width + rect.x) * 4)
+  }
+}
+
+/** UV-ul din textura materialului, mutat in atlas (atlasul se incarca intors, ca orice textura three.js). */
+function atlasUv(n, mat, u, v) {
+  const r = rectOf(n, mat)
+  return [(r.x + u * r.size) / atlas.width, 1 - (r.y + (1 - v) * r.size) / atlas.height]
+}
+
 // ---------------------------------------------------------------- personajele
 
 await MeshoptSimplifier.ready
 
+const clipCache = new Map()
+async function clipOf(path) {
+  if (!clipCache.has(path)) {
+    const [folder, name] = path.split('/')
+    const buf = await cached(`${REPO}/Animations/all_animations_max_motextr_${folder}/${name}.max.fbx`, `${name}.fbx`)
+    const root = parseFbx(buf)
+    clipCache.set(path, rotationsOnly(root.animations[0]))
+  }
+  return clipCache.get(path)
+}
+
 // pozele fiecaruia; unii mai ridica si cealalta mana, unul merge prin multime
-const EXTRA = { hoodie: ['cheer', 'pump'], punk: ['cheer', 'pump'], woman: ['cheer', 'pump'], casual: ['walk', 'cheer', 'pump'] }
+const EXTRA = { party: ['cheer', 'pump'], party2: ['cheer', 'pump'], polo: ['cheer', 'pump'], track: ['cheer', 'pump'], greentee: ['cheer', 'pump'], navy: ['walk', 'cheer', 'pump'] }
 
 const chars = []
-for (const c of CHARACTERS) {
-  const { gltf, palette } = await load(c)
-  const rig = rigOf(gltf)
-  const mixer = new THREE.AnimationMixer(gltf.scene)
+for (const [n, c] of CHARACTERS.entries()) {
+  const base = `${REPO}/Avatars/Adults/${c.dir}`
+  const root = parseFbx(await cached(`${base}/Export/${c.dir}.fbx`, `${c.dir}.fbx`))
+  const tga = async (part, optional) => {
+    const buf = await cached(`${base}/Textures/${c.tex}_${part}_color.tga`, `${c.tex}_${part}_color.tga`, optional)
+    return buf ? decodeTga(buf) : null
+  }
+  // cei tunsi scurt nu au suvite: parul lor e doar pictat pe cap
+  const full = [await tga('body'), await tga('head'), (await tga('opacity', true)) ?? { width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }]
+  let mesh = null
+  root.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o })
+  root.updateMatrixWorld(true)
+
+  const rig = rigOf(root)
+  const clips = { idle: await clipOf(CLIPS[c.sex].idle), walk: await clipOf(CLIPS[c.sex].walk) }
   const poses = ['high', 'eye', ...(EXTRA[c.id] ?? [])]
 
   // topologia vine din poza de repaus; pozele doar muta aceleasi varfuri
-  mixer.clipAction(clipFor(gltf, /(^|\|)(Female_)?Idle$/)).play()
-  mixer.setTime(0.4)
-  gltf.scene.updateMatrixWorld(true)
-  const all = collect(gltf, palette)
-  const body = weld(all.refs, posed(all.refs), all.index)
+  const { refs, tris } = collect(mesh, full)
+  pose(root, rig, 'eye', clips, refs)
+  const rest = posed(refs)
 
-  const paletteKeys = []
-  const colorOf = (r) => {
-    const key = `${r.color.join(',')},${r.role}`
-    let k = paletteKeys.indexOf(key)
-    if (k < 0) k = paletteKeys.push(key) - 1
-    return k
+  // texturile, micsorate si cu marginile prelungite, in locul lor din atlas
+  const sizes = [256, 128, 128]
+  sizes.forEach((size, mat) => {
+    const img = shrink(full[mat], size)
+    const used = mat === MAT.hair
+      ? Uint8Array.from({ length: size * size }, (_, i) => (img.data[i * 4 + 3] > 127 ? 1 : 0))
+      : coverage(size, Array.from({ length: tris[mat].length / 3 }, (_, t) => [0, 1, 2].map((k) => [refs[tris[mat][t * 3 + k]].u, refs[tris[mat][t * 3 + k]].v])))
+    bleed(img, used)
+    if (mat !== MAT.hair) for (let i = 0; i < size * size; i++) img.data[i * 4 + 3] = 255
+    paste(img, rectOf(n, mat))
+  })
+
+  const roleColor = new Map()
+  for (const r of refs) {
+    const s = roleColor.get(r.role) ?? [0, 0, 0, 0]
+    s[0] += r.color[0]
+    s[1] += r.color[1]
+    s[2] += r.color[2]
+    s[3]++
+    roleColor.set(r.role, s)
   }
+  const roles = [...roleColor.keys()]
+  const palette = roles.map((role) => {
+    const s = roleColor.get(role)
+    return [...s.slice(0, 3).map((v) => Math.round((v / s[3]) * 255)), role]
+  })
 
-  const lods = LODS.map((target) => {
-    const s = simplify(body, target)
-    return { keep: s.keep, index: s.index, colors: s.keep.map((i) => colorOf(body.refs[i])), poses: [] }
+  const body = [...tris[MAT.body], ...tris[MAT.head]]
+  const lods = LODS.map((target, level) => {
+    const index = simplify(refs, rest, body, target)
+    const hair = level === 0 ? simplify(refs, rest, tris[MAT.hair], HAIR) : []
+    // varfurile renumerotate in ordinea primei folosiri: corpul, parul, apoi parul vazut din spate
+    const keep = []
+    const local = new Map()
+    const idOf = (i) => {
+      let j = local.get(i)
+      if (j === undefined) {
+        j = keep.length
+        local.set(i, j)
+        keep.push(i)
+      }
+      return j
+    }
+    // suvitele sunt foi subtiri: scena le deseneaza pe amandoua fetele
+    const bodyIdx = index.map(idOf)
+    const hairIdx = hair.map(idOf)
+    return {
+      keep,
+      bodyIdx,
+      hairIdx,
+      colors: keep.map((i) => roles.indexOf(refs[i].role)),
+      uv: keep.map((i) => atlasUv(n, refs[i].mat, refs[i].u, refs[i].v)),
+      poses: [],
+    }
   })
 
   for (const name of poses) {
-    const frame = pose(gltf, rig, name, mixer, body.refs)
-    const P = posed(body.refs)
+    const frame = pose(root, rig, name, clips, refs)
+    const P = posed(refs)
     lods.forEach((lod, level) => {
-      const n = lod.keep.length
-      const pos = new Float32Array(n * 3)
+      const nv = lod.keep.length
+      const pos = new Float32Array(nv * 3)
       lod.keep.forEach((i, k) => pos.set([P[i * 3], P[i * 3 + 1], P[i * 3 + 2]], k * 3))
-      const nrm = smoothNormals(pos, lod.index)
+      // corpul si parul au fiecare normalele lor: varfurile lor nu se ating
+      const nrm = smoothNormals(pos, [...lod.bodyIdx, ...lod.hairIdx])
       const ph = phone(rig, frame, level)
       // talpile la y = 0, telefonul la (0, 1, 0)
       let minY = Infinity
-      for (let i = 1; i < pos.length; i += 3) minY = Math.min(minY, pos[i])
+      let top = -Infinity
+      for (let i = 1; i < pos.length; i += 3) {
+        minY = Math.min(minY, pos[i])
+        top = Math.max(top, pos[i])
+      }
       const k = 1 / (ph.center.y - minY)
       const norm = (arr) => {
         const out = new Float32Array(arr.length)
@@ -517,18 +643,15 @@ for (const c of CHARACTERS) {
         }
         return out
       }
-      lod.poses.push({ name, pos: norm([...pos, ...ph.pos]), nrm: Float32Array.from([...nrm, ...ph.nrm]), height: (Math.max(...pos.filter((_, i) => i % 3 === 1)) - minY) * k })
-      if (!lod.phone) {
-        lod.phone = { start: n, tris: lod.index.length / 3, role: ph.role, screen: ph.screen, index: ph.index.map((i) => i + n) }
-      }
+      lod.poses.push({ name, pos: norm([...pos, ...ph.pos]), nrm: Float32Array.from([...nrm, ...ph.nrm]), height: (top - minY) * k })
+      if (!lod.phone) lod.phone = { start: nv, role: ph.role, screen: ph.screen, index: ph.index.map((i) => i + nv) }
     })
   }
-  const palette8 = paletteKeys.map((key) => key.split(',').map(Number))
-  chars.push({ id: c.id, title: c.title, palette: palette8, poses, lods })
-  console.log(`${c.id}: ${poses.join(', ')} · ${lods.map((l) => `${l.index.length / 3}+${l.phone.index.length / 3} tri / ${l.keep.length} v`).join(', ')} · ${palette8.length} culori`)
+  chars.push({ id: c.id, title: c.dir.replaceAll('_', ' '), palette, poses, lods })
+  console.log(`${c.id}: ${poses.join(', ')} · ${lods.map((l) => `${l.bodyIdx.length / 3}+${l.hairIdx.length / 3}+${l.phone.index.length / 3} tri / ${l.keep.length} v`).join(', ')}`)
 }
 
-// ---------------------------------------------------------------- fisierul
+// ---------------------------------------------------------------- fisierele
 
 // pozitii pe 16 biti in cutia comuna; diferentele dintre varfuri vecine si dintre indici se comprima bine
 const lo = [Infinity, Infinity, Infinity]
@@ -560,7 +683,7 @@ const delta16 = (values) => {
   })
   return out
 }
-const header = { box: [lo, hi], roles: ROLE, chars: [] }
+const header = { box: [lo, hi], roles: ROLE, atlas: { width: atlas.width, height: atlas.height }, chars: [] }
 for (const c of chars) {
   header.chars.push({
     id: c.id,
@@ -569,17 +692,23 @@ for (const c of chars) {
     lods: c.lods.map((l) => {
       const n = l.keep.length
       const total = n + l.phone.role.length
-      const idx = [...l.index, ...l.phone.index]
+      // triunghiurile: corpul si capul, telefonul, apoi parul (desenat separat, cu transparenta)
+      const idx = [...l.bodyIdx, ...l.phone.index, ...l.hairIdx]
       const col = Uint8Array.from([...l.colors, ...l.phone.role.map((r) => 255 - r)])
       const scr = Int8Array.from(l.phone.screen.map((v) => Math.round(Math.max(-1, Math.min(1, v)) * 127)))
+      const uv = new Uint16Array(total * 2)
+      l.uv.forEach(([u, v], i) => uv.set([Math.round(u * 65535), Math.round(v * 65535)], i * 2))
       return {
         count: total,
-        body: l.index.length,
+        body: l.bodyIdx.length,
+        phoneTris: l.phone.index.length,
+        hair: l.hairIdx.length,
         tris: idx.length / 3,
         phone: n,
         idx: push(delta16(idx)),
         col: push(col),
         scr: push(scr),
+        uv: push(uv),
         poses: l.poses.map((p) => {
           const q = []
           for (let i = 0; i < total; i++) for (let k = 0; k < 3; k++) q.push(Math.round(((p.pos[i * 3 + k] - lo[k]) / (hi[k] - lo[k])) * 65535))
@@ -593,11 +722,11 @@ for (const c of chars) {
     }),
   })
 }
-header.credits = CHARACTERS.map((c) => `${c.title} · Quaternius · CC0 · https://poly.pizza`)
+header.credits = CHARACTERS.map((c) => `${c.dir} · Microsoft Rocketbox · MIT · https://github.com/microsoft/Microsoft-Rocketbox`)
 const text = new TextEncoder().encode(JSON.stringify(header))
 const headLen = text.length + ((4 - (text.length % 4)) % 4)
 const file = new Uint8Array(8 + headLen + size)
-file.set(new TextEncoder().encode('PPL2'), 0)
+file.set(new TextEncoder().encode('PPL3'), 0)
 new DataView(file.buffer).setUint32(4, headLen, true)
 file.set(text, 8)
 file.fill(0x20, 8 + text.length, 8 + headLen)
@@ -609,3 +738,9 @@ for (const p of parts) {
 const packed = gzipSync(file, { level: 9 })
 writeFileSync(OUT, packed)
 console.log(`\n${OUT.replace(site, '')}: ${(file.length / 1024).toFixed(0)} KB, comprimat ${(packed.length / 1024).toFixed(0)} KB`)
+
+// atlasul: pixelii bruti, apoi WebP prin ImageMagick
+const raw = resolve(CACHE, 'atlas.rgba')
+writeFileSync(raw, atlasData)
+execFileSync('magick', ['-size', `${atlas.width}x${atlas.height}`, '-depth', '8', `rgba:${raw}`, '-quality', '84', '-define', 'webp:method=6', '-define', 'webp:alpha-quality=90', ATLAS])
+console.log(`${ATLAS.replace(site, '')}: ${atlas.width} x ${atlas.height}, ${(readFileSync(ATLAS).length / 1024).toFixed(0)} KB`)

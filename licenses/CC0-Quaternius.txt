@@ -1,7 +1,0 @@
-Oamenii din scena 3D (src/scene/people.dat, facut de scripts/people.mjs) vin din personaje de Quaternius,
-publicate in domeniul public (CC0 1.0), luate de pe https://poly.pizza/u/Quaternius:
-Hoodie Character, Casual Character, Beach Character, Punk, Animated Woman, Woman in Tank Top, Woman Casual.
-
-CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
-Autorul a renuntat la toate drepturile asupra lor; se pot folosi, modifica si distribui fara permisiune.
-Multumim, Quaternius.

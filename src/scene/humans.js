@@ -1,5 +1,6 @@
-// Oamenii din multime, din people.dat (vezi scripts/people.mjs): personaje CC0 de la Quaternius, in pozele de la
-// concert, pe trei trepte de detaliu. Fisierul vine comprimat; il desface browserul, fara biblioteci in plus.
+// Oamenii din multime, din people.dat si people.webp (vezi scripts/people.mjs): personaje Microsoft Rocketbox (MIT),
+// in pozele de la concert, pe trei trepte de detaliu, cu hainele si fetele intr-un singur atlas. Fisierul vine
+// comprimat; il desface browserul, fara biblioteci in plus.
 import * as THREE from 'three'
 
 const linear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
@@ -15,7 +16,7 @@ export async function unpack(buf) {
 /** Desface fisierul: pentru fiecare personaj, pe fiecare treapta, cate o geometrie pentru fiecare poza. */
 export function parsePeople(buf) {
   const dv = new DataView(buf)
-  if (String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== 'PPL2') throw new Error('people.dat: alt format')
+  if (String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== 'PPL3') throw new Error('people.dat: alt format')
   const headLen = dv.getUint32(4, true)
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, headLen)))
   const base = 8 + headLen
@@ -54,6 +55,10 @@ export function parsePeople(buf) {
       const colorAttr = new THREE.BufferAttribute(color, 3)
       const roleAttr = new THREE.BufferAttribute(role, 1)
       const screenAttr = new THREE.BufferAttribute(screen, 2)
+      // locul fiecarui varf in atlas, pe 16 biti (placa video il primeste intre 0 si 1)
+      const uvAttr = new THREE.BufferAttribute(new Uint16Array(buf, base + l.uv, n * 2), 2, true)
+      // corpul si telefonul intr-o trecere, parul din suvite in alta, cu transparenta
+      const hairStart = l.body + l.phoneTris
 
       const poses = {}
       for (const p of l.poses) {
@@ -88,19 +93,37 @@ export function parsePeople(buf) {
         g.setAttribute('aColor', colorAttr)
         g.setAttribute('aRole', roleAttr)
         g.setAttribute('aScreen', screenAttr)
+        g.setAttribute('uv', uvAttr)
+        if (l.hair) {
+          g.addGroup(0, hairStart, 0)
+          g.addGroup(hairStart, l.hair, 1)
+        }
         poses[p.name] = { geometry: g, height: p.height }
       }
-      return { poses, bodyIndexCount: l.body }
+      return { poses, bodyIndexCount: l.body, hairStart, hairCount: l.hair }
     })
     return { id: c.id, poses: c.poses, lods }
   })
-  return { chars, credits: header.credits }
+  return { chars, credits: header.credits, atlasSize: header.atlas }
 }
 
-/** Oamenii, gata de pus in scena; respinge daca fisierul nu vine sau browserul nu il poate desface. */
-export async function loadPeople(url) {
+/** Atlasul cu hainele si fetele: sRGB, cu mipmap-uri, ca de departe sa nu sclipeasca. */
+async function loadAtlas(url) {
+  const tex = await new THREE.TextureLoader().loadAsync(url)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  return tex
+}
+
+/** Oamenii, gata de pus in scena; respinge daca fisierele nu vin sau browserul nu le poate desface. */
+export async function loadPeople(url, atlasUrl) {
   if (typeof DecompressionStream === 'undefined') throw new Error('fara DecompressionStream')
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`people.dat: ${res.status}`)
-  return parsePeople(await unpack(await res.arrayBuffer()))
+  const [buf, atlas] = await Promise.all([
+    fetch(url).then((res) => {
+      if (!res.ok) throw new Error(`people.dat: ${res.status}`)
+      return res.arrayBuffer()
+    }),
+    loadAtlas(atlasUrl),
+  ])
+  return { ...parsePeople(await unpack(buf)), atlas }
 }

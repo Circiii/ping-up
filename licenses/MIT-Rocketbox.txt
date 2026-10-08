@@ -1,0 +1,27 @@
+Oamenii din scena 3D (src/scene/people.dat si src/scene/people.webp, facute de scripts/people.mjs) vin din
+biblioteca Microsoft Rocketbox, https://github.com/microsoft/Microsoft-Rocketbox: personajele Female_Party_01,
+Female_Party_02, Female_Adult_03, Female_Adult_08, Female_Adult_12, Female_Adult_17, Male_Adult_01, Male_Adult_06,
+Male_Adult_09, Male_Adult_16, Male_Adult_17 si Male_Adult_18, puse in poze cu miscarile f/m_idle_neutral_01 si
+f/m_walk_neutral_01 din aceeasi biblioteca, simplificate, cu texturile micsorate intr-un atlas.
+
+MIT License
+
+Copyright (c) 2020 Microsoft
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

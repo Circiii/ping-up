@@ -1,5 +1,6 @@
 import './style.css'
 import peopleUrl from './scene/people.dat?url'
+import atlasUrl from './scene/people.webp?url'
 import { setupDownload } from './ui/download.js'
 import { setupMenu } from './ui/menu.js'
 
@@ -34,7 +35,7 @@ async function start() {
   // scena se descarca in timp ce asteptam putin fontul: ecranele LED scriu cu Inter
   const parts = Promise.all([import('./scene/index.js'), import('./story.js'), import('./nav.js')])
   // oamenii vin intr-un fisier separat; daca nu vin, raman siluetele simple
-  const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl)).catch(() => null)
+  const people = import('./scene/humans.js').then((m) => m.loadPeople(peopleUrl, atlasUrl)).catch(() => null)
   await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))])
   const [{ createScene }, { createStory }, { setupJumps }] = await parts
   const scene = createScene(canvas, quality(), await people)

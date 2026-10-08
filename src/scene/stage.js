@@ -12,7 +12,7 @@ const smooth = (v) => { const u = clamp01(v); return u * u * (3 - 2 * u) }
 
 /** Un om pe scena, vazut doar ca silueta in fata ecranului; cu personajele adevarate, cu mainile sus. */
 let cast = null
-const PERFORMERS = ['hoodie', 'punk', 'woman']
+const PERFORMERS = ['hoodie', 'track', 'party2']
 let next = 0
 function performer(x, y, z, height, face) {
   let g
