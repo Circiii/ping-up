@@ -196,13 +196,54 @@ function barSignTexture() {
   })
 }
 
-function treeGeometry() {
-  return merge([
-    place(new THREE.CylinderGeometry(0.15, 0.24, 2.3, 6), 0, 1.15, 0),
-    place(new THREE.IcosahedronGeometry(1.45, 1), 0, 3.3, 0),
-    place(new THREE.IcosahedronGeometry(1.05, 1), 0.75, 2.65, 0.3),
-    place(new THREE.IcosahedronGeometry(0.9, 1), -0.6, 3.75, -0.4),
-  ])
+/** Lipeste bucatile intr-o geometrie si coloreaza varfurile fiecareia: trunchiul maro, frunzisul verde. */
+function painted(parts) {
+  const colors = []
+  for (const [g, hex] of parts) {
+    const c = new THREE.Color(hex)
+    for (let i = 0; i < g.attributes.position.count; i++) colors.push(c.r, c.g, c.b)
+  }
+  const geo = merge(parts.map(([g]) => g))
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+  return geo
+}
+
+/** Bulgar de frunzis: un icosaedru deformat, ca o coroana sa nu para facuta din sfere. */
+function clump(r, x, y, z, seed) {
+  const g = new THREE.IcosahedronGeometry(r, 1)
+  const p = g.attributes.position
+  for (let i = 0; i < p.count; i++) {
+    const vx = p.getX(i)
+    const vy = p.getY(i)
+    const vz = p.getZ(i)
+    const k = 1 + 0.17 * Math.sin(vx * 4.1 + vz * 2.3 + seed * 7) * Math.sin(vy * 3.7 - vz * 1.9 + seed * 5)
+    p.setXYZ(i, vx * k, vy * k * 0.9, vz * k)
+  }
+  g.computeVertexNormals()
+  return place(g, x, y, z)
+}
+
+/** Copac cu frunze: trunchi care se ingusteaza, doua crengi si o coroana din mai multi bulgari. */
+function leafyTree() {
+  const bark = '#2A2118'
+  const leaf = '#1B3524'
+  const parts = [
+    [place(new THREE.CylinderGeometry(0.1, 0.24, 2.7, 7), 0, 1.35, 0), bark],
+    [place(new THREE.CylinderGeometry(0.04, 0.08, 1.3, 5), 0.42, 2.55, 0.1, 0, 0, -0.75), bark],
+    [place(new THREE.CylinderGeometry(0.04, 0.07, 1.1, 5), -0.36, 2.7, -0.15, 0.3, 0, 0.8), bark],
+  ]
+  const blobs = [[1.45, 0, 3.55, 0], [1.05, 0.95, 3.0, 0.35], [1.0, -0.82, 3.1, -0.42], [1.0, 0.25, 4.4, -0.25], [0.9, -0.35, 2.8, 0.78], [0.82, 0.55, 3.75, 0.85]]
+  blobs.forEach(([r, x, y, z], i) => parts.push([clump(r, x, y, z, i + 1), leaf]))
+  return painted(parts)
+}
+
+/** Brad: trunchi scurt si patru etaje de ramuri, tot mai inguste spre varf. */
+function pineTree() {
+  const parts = [[place(new THREE.CylinderGeometry(0.08, 0.17, 1.5, 6), 0, 0.75, 0), '#241B13']]
+  for (const [y, r, h] of [[1.0, 1.75, 2.3], [1.8, 1.38, 2.05], [2.6, 1.02, 1.8], [3.35, 0.64, 1.4]]) {
+    parts.push([place(new THREE.ConeGeometry(r, h, 8, 1), 0, y + h / 2, 0), '#122A1C'])
+  }
+  return painted(parts)
 }
 
 /** Antena de telefonie de pe dealul din spatele scenei: zabrele, panouri, antene parabolice si becul rosu din varf. */
@@ -562,15 +603,23 @@ export function createProps(quality, rand, time) {
     if (side === 1 && x > gx0 - 4 && x < gx1 + 4) continue
     trees.push([x, z, 1.3 + rand() * 1.5])
   }
-  const forest = new THREE.InstancedMesh(treeGeometry(), matte('#0F1A13', 1), trees.length)
+  // doua feluri de copaci, fiecare cu alt verde; brazii doar in jurul festivalului
+  const isPine = (i) => i >= grove.length && Math.abs(Math.sin(i * 91.7) * 43758.5) % 1 < 0.38
+  const foliage = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.95, envMapIntensity: 0.1 })
+  const kinds = [leafyTree(), pineTree()].map((geo, k) => new THREE.InstancedMesh(geo, foliage, trees.filter((_, i) => isPine(i) === (k === 1)).length))
+  const filled = [0, 0]
+  const shade = new THREE.Color()
   trees.forEach(([x, z, s], i) => {
+    const k = isPine(i) ? 1 : 0
     dummy.position.set(x, 0, z)
     dummy.rotation.set(0, rand() * Math.PI * 2, 0)
     dummy.scale.set(s, s * (0.9 + rand() * 0.35), s)
     dummy.updateMatrix()
-    forest.setMatrixAt(i, dummy.matrix)
+    kinds[k].setMatrixAt(filled[k], dummy.matrix)
+    const h = Math.abs(Math.sin(i * 12.7) * 9301.3) % 1
+    kinds[k].setColorAt(filled[k]++, shade.setRGB(0.55 + 0.6 * h, 0.7 + 0.45 * h, 0.6 + 0.35 * (1 - h)))
   })
-  group.add(forest)
+  group.add(...kinds)
 
   // ---------- felinarele de pe alei ----------
   const lampAt = []
