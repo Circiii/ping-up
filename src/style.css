@@ -44,10 +44,11 @@
   --t-lead: clamp(1.125rem, 1.02rem + .42vw, 1.3125rem);
   --t-body: 1.0625rem;
 
-  /* intrarile incetinesc pana la oprire, iesirile pleaca repede */
+  /* intrarile incetinesc pana la oprire; iesirile pornesc la fel de repede, dar sunt mai scurte: nimic nu asteapta
+     la inceputul miscarii, exact cand te uiti */
   --ease: cubic-bezier(.2, 0, 0, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
-  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --exit: .16s;
   --gutter: clamp(16px, 5.5vw, 88px);
   /* bara de sus pluteste la --nav-top de margine; --nav-h e tot spatiul pe care il ocupa, cu tot cu golul */
   --nav-top: 10px;
@@ -220,7 +221,9 @@ section:focus { outline: none; }
   white-space: nowrap;
   transition: scale .15s var(--ease), background-color .15s var(--ease);
 }
-.btn:hover { background: #55DE78; }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: #55DE78; }
+}
 .btn:active { scale: .97; }
 /* butonul verde are volum: lumina cade de sus, iar sub el verdele se reflecta moale */
 .btn--small, .btn--big {
@@ -234,12 +237,17 @@ section:focus { outline: none; }
   transition: translate .35s var(--ease-out), scale .35s var(--ease-out), background-color .2s var(--ease);
 }
 .btn__dot .i { width: 16px; height: 16px; }
-.btn:hover .btn__dot { translate: 0 1px; scale: 1.06; background: rgb(11 14 12 / .2); }
+/* miscarea de sub cursor doar unde exista cursor: pe telefon atingerea ar lasa cercul agatat */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover .btn__dot { translate: 0 1px; scale: 1.06; background: rgb(11 14 12 / .2); }
+  .btn--big:hover .btn__dot { translate: 0 2px; }
+  .link:hover .link__dot { translate: 0 2px; background: rgb(244 246 240 / .08); box-shadow: inset 0 0 0 1px rgb(244 246 240 / .42); }
+  .foot__up:hover .link__dot { translate: 0 -2px; }
+}
 .btn--small { margin-left: 8px; height: 40px; padding: 0 4px 0 16px; font-size: .9375rem; }
 .btn--big { height: 60px; padding: 0 6px 0 26px; gap: 18px; font-size: 1.0625rem; position: relative; overflow: hidden; isolation: isolate; }
 .btn--big .btn__dot { width: 48px; height: 48px; background: rgb(11 14 12 / .12); }
 .btn--big .btn__dot .i { width: 20px; height: 20px; }
-.btn--big:hover .btn__dot { translate: 0 2px; }
 /* eticheta pe doua randuri: ce faci si cat cantareste */
 .btn__label { display: grid; line-height: 1.2; }
 .btn__label small { font-size: .8125rem; font-weight: 600; opacity: .64; font-variant-numeric: tabular-nums; }
@@ -269,7 +277,7 @@ section:focus { outline: none; }
   transition: translate .35s var(--ease-out), background-color .2s var(--ease), box-shadow .2s var(--ease);
 }
 .link__dot .i { width: 16px; height: 16px; }
-.link:hover .link__dot { translate: 0 2px; background: rgb(244 246 240 / .08); box-shadow: inset 0 0 0 1px rgb(244 246 240 / .42); }
+
 
 /* ---------- prima pagina ---------- */
 
@@ -363,7 +371,7 @@ html.story-snap *, html.story-snap *::before, html.story-snap *::after { transit
 .net.is-dead b, .net.is-dead span:last-child { color: #FF6159; }
 
 /* textul intra de jos, in trepte, si pleaca repede in sus */
-html.story-on .copy > * { opacity: 0; translate: 0 22px; transition: opacity .2s var(--ease-in), translate .2s var(--ease-in); }
+html.story-on .copy > * { opacity: 0; translate: 0 22px; transition: opacity var(--exit) var(--ease-out), translate .3s var(--ease-out); }
 html.story-on .is-past .copy > * { translate: 0 -14px; }
 html.story-on .is-in .copy { pointer-events: auto; }
 html.story-on .is-in .copy > * { opacity: 1; translate: 0 0; transition: opacity .55s var(--ease-out), translate .7s var(--ease-out); }
@@ -458,7 +466,7 @@ html:not(.story-on) :is(.states, .steps) li { color: var(--ink); }
   transform: translateY(-50%) scale(1) perspective(1600px) rotateY(-16deg) rotateX(4deg) rotateZ(.6deg);
 }
 /* telefonul apare dupa text, intorcandu-se spre cititor */
-html.story-on .phone { opacity: 0; transform: translateY(-50%) scale(.95) perspective(1600px) rotateY(-27deg) rotateX(4deg) rotateZ(.6deg); transition: opacity .2s var(--ease-in), transform .2s var(--ease-in); }
+html.story-on .phone { opacity: 0; transform: translateY(-50%) scale(.95) perspective(1600px) rotateY(-27deg) rotateX(4deg) rotateZ(.6deg); transition: opacity var(--exit) var(--ease-out), transform .3s var(--ease-out); }
 html.story-on .is-in .phone { opacity: 1; transform: translateY(-50%) scale(1) perspective(1600px) rotateY(-16deg) rotateX(4deg) rotateZ(.6deg); transition: opacity .5s var(--ease-out) .1s, transform .9s var(--ease-out) .1s; }
 
 .phone::before, .phone::after {
@@ -694,7 +702,7 @@ html.story-on [data-phone]:not(.s-1) .b__queued, html:not(.story-on) .b__queued 
   box-shadow: inset 0 0 0 1px var(--rim);
   display: grid; gap: 12px;
 }
-html.story-on .packet { opacity: 0; scale: .97; transition: opacity .2s var(--ease-in), scale .2s var(--ease-in); }
+html.story-on .packet { opacity: 0; scale: .97; transition: opacity var(--exit) var(--ease-out), scale .3s var(--ease-out); }
 html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var(--ease-out) .1s, scale .7s var(--ease-out) .1s; }
 .packet figcaption { font-size: .9375rem; font-weight: 600; color: var(--ink); }
 .packet__head, .packet__body { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -970,7 +978,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 .foot__nav a { color: var(--ink-2); text-decoration: none; transition: color .15s var(--ease); }
 .foot__nav a:hover { color: var(--ink); text-decoration: underline; }
 .foot__up { padding: 0; }
-.foot__up:hover .link__dot { translate: 0 -2px; }
+
 .foot__legal { padding-top: 24px; border-top: 1px solid rgb(244 246 240 / .1); font-size: .8125rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 /* la capat, numele scris din becuri, ca pe ecranele de langa scena; jos se pierde in noapte */
 .foot__mark {
@@ -1060,7 +1068,7 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
     transform-origin: 50% 0;
     opacity: 0; translate: 0 -8px; scale: .98;
     visibility: hidden; pointer-events: none;
-    transition: opacity .18s var(--ease-in), translate .18s var(--ease-in), scale .18s var(--ease-in), visibility 0s linear .18s;
+    transition: opacity var(--exit) var(--ease-out), translate .24s var(--ease-out), scale .24s var(--ease-out), visibility 0s linear var(--exit);
   }
   .nav.is-open .nav__links {
     opacity: 1; translate: 0 0; scale: 1;

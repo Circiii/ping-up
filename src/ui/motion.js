@@ -13,14 +13,17 @@ function magnetic() {
   for (const btn of document.querySelectorAll('.btn--big, .btn--small')) {
     hover(btn, () => {
       if (btn.getAttribute('aria-disabled') === 'true') return
+      // marimea butonului se citeste o data, la intrare; miscarea merge prin transform, pe placa video (WAAPI)
+      const r = btn.getBoundingClientRect()
       const follow = (e) => {
-        const r = btn.getBoundingClientRect()
-        animate(btn, { x: (e.clientX - r.left - r.width / 2) * 0.14, y: (e.clientY - r.top - r.height / 2) * 0.28 }, SPRING)
+        const x = (e.clientX - r.left - r.width / 2) * 0.14
+        const y = (e.clientY - r.top - r.height / 2) * 0.28
+        animate(btn, { transform: `translate(${x}px, ${y}px)` }, SPRING)
       }
       btn.addEventListener('pointermove', follow)
       return () => {
         btn.removeEventListener('pointermove', follow)
-        animate(btn, { x: 0, y: 0 }, SETTLE)
+        animate(btn, { transform: 'translate(0px, 0px)' }, SETTLE)
       }
     })
   }
@@ -170,13 +173,18 @@ function spotlight() {
 function tilt() {
   const qr = document.querySelector('.qr')
   if (!qr) return
+  let r = null
+  qr.addEventListener('pointerenter', () => { r = qr.getBoundingClientRect() })
   qr.addEventListener('pointermove', (e) => {
-    const r = qr.getBoundingClientRect()
+    r ??= qr.getBoundingClientRect()
     const px = (e.clientX - r.left) / r.width - 0.5
     const py = (e.clientY - r.top) / r.height - 0.5
-    animate(qr, { rotateY: px * 12, rotateX: -py * 12, transformPerspective: 700 }, SPRING)
+    animate(qr, { transform: `perspective(700px) rotateX(${-py * 12}deg) rotateY(${px * 12}deg)` }, SPRING)
   })
-  qr.addEventListener('pointerleave', () => animate(qr, { rotateX: 0, rotateY: 0 }, SETTLE))
+  qr.addEventListener('pointerleave', () => {
+    r = null
+    animate(qr, { transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }, SETTLE)
+  })
 }
 
 export function setupMotion() {
