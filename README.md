@@ -43,7 +43,8 @@ descărcarea merge oricum; doar mărimea și SHA-256-ul pot lipsi o vreme.
   `certSha256`, amprenta certificatului de semnare (din notele primului release), afișată sub butonul de descărcare.
 - `api/apk.js`, `lib/release.js`: ultimul release de pe GitHub, pentru butonul de descărcare.
 - `src/data/venue.json`: harta festivalului, aceeași ca în aplicație.
-- `src/scene/`: scena 3D (Three.js): mulțimea și rețeaua, oamenii, scenele, construcțiile, pinul din logo, solul și harta.
+- `src/scene/`: scena 3D (Three.js): mulțimea și rețeaua, oamenii, scenele, construcțiile, zona de producție din spatele
+  scenei mari (`backstage.js`), roata mare (`wheel.js`), pinul din logo, solul și harta.
 - `src/story.js`: ce se întâmplă în scenă la fiecare capitol, pe scroll.
 - `src/scene/people.dat` și `src/scene/people.webp`: oamenii din mulțime, personaje Microsoft Rocketbox (MIT) puse
   cu telefonul ridicat, pe trei trepte de detaliu, cu hainele și fețele într-un singur atlas. Se refac cu
