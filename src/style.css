@@ -62,7 +62,14 @@ html {
   text-size-adjust: 100%;
   scroll-padding-top: var(--nav-h);
   scrollbar-color: #3D4A41 var(--night);
+  accent-color: var(--green);
+  /* pe Android atingerea nu mai pune un dreptunghi gri peste butoanele rotunde; fiecare are starea lui :active */
+  -webkit-tap-highlight-color: transparent;
 }
+/* Safari si Windows: bara de derulare in culorile paginii (Chrome si Firefox citesc scrollbar-color) */
+::-webkit-scrollbar { width: 12px; height: 12px; background: var(--night); }
+::-webkit-scrollbar-thumb { border: 3px solid var(--night); border-radius: 999px; background: #3D4A41; }
+::-webkit-scrollbar-thumb:hover { background: #4E5E53; }
 
 body {
   margin: 0;
@@ -84,7 +91,14 @@ body {
 img, svg { display: block; max-width: 100%; }
 h1, h2, h3, p, ol, ul, dl, dd, figure { margin: 0; }
 ol, ul { padding: 0; list-style: none; }
-a { color: inherit; text-underline-offset: .18em; }
+/* sublinierea e subtire si stinsa; sub cursor capata culoarea textului */
+a {
+  color: inherit;
+  text-underline-offset: .22em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgb(244 246 240 / .4);
+}
+a:hover { text-decoration-color: currentColor; }
 button { font: inherit; color: inherit; }
 
 .i { width: 1.25em; height: 1.25em; fill: currentColor; flex: none; }
