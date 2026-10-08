@@ -64,6 +64,7 @@ function capsule() {
 }
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
+const smoothstep01 = (v) => { const u = clamp01(v); return u * u * (3 - 2 * u) }
 const ease = (t) => t * t * (3 - 2 * t)
 const backOut = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2)
 
@@ -457,6 +458,8 @@ export function createScene(canvas, quality, models = null) {
 
     people.update(camera)
     tags.update(camera, size.w, size.h, s.tags, navH)
+    // de aproape, ca la un obiectiv: subiectul clar, restul topit; planurile largi raman clare
+    if (post) post.focus(reach, smoothstep01((34 - reach) / 22), size.dpr)
     if (post) post.render(t, dt)
     else renderer.render(scene, camera)
   }
