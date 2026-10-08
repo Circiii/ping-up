@@ -8,6 +8,16 @@
   font-display: swap;
 }
 
+/* Pana vine Inter, Arial (Roboto pe Android) adus la marimea si la liniile lui: textul nu mai sare la schimbare. */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Roboto');
+  size-adjust: 107.12%;
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+}
+
 :root {
   color-scheme: dark;
   --night: #0E110F;
@@ -27,7 +37,7 @@
   --red: #FF453A;
   --rim: rgb(211 216 178 / .16);
 
-  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font: 'Inter', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --t-hero: clamp(3rem, 1.3rem + 5.4vw, 6rem);
   --t-h2: clamp(2.1rem, 1.35rem + 2.9vw, 3.9rem);
