@@ -100,6 +100,7 @@ function tentRoof(L, half, eave, ridge, bays) {
   const NX = bays * 8
   const NT = 6
   const pos = []
+  const uv = []
   for (const side of [-1, 1]) {
     const row = (i, j) => {
       const x = -L / 2 + (i / NX) * L
@@ -107,6 +108,8 @@ function tentRoof(L, half, eave, ridge, bays) {
       const sag = 0.08 * Math.sin(Math.PI * ((i / NX) * bays % 1)) * Math.sin(Math.PI * t)
       return [x, ridge - t * (ridge - eave) - sag, side * t * half]
     }
+    // u merge in lungul cortului, v de la coama la streasina: dungile panzei urmeaza panta
+    const at = (i, j) => [i / NX, j / NT]
     for (let i = 0; i < NX; i++) {
       for (let j = 0; j < NT; j++) {
         const a = row(i, j)
@@ -114,12 +117,13 @@ function tentRoof(L, half, eave, ridge, bays) {
         const c = row(i + 1, j + 1)
         const d = row(i, j + 1)
         pos.push(...a, ...b, ...c, ...a, ...c, ...d)
+        uv.push(...at(i, j), ...at(i + 1, j), ...at(i + 1, j + 1), ...at(i, j), ...at(i + 1, j + 1), ...at(i, j + 1))
       }
     }
   }
   const g = new THREE.BufferGeometry()
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
   g.computeVertexNormals()
   return g
 }
@@ -161,6 +165,34 @@ function tentWallTexture() {
       g.lineWidth = 3
       g.stroke()
     }
+  })
+}
+
+/** Bordura barurilor: dungi verde inchis si crem, ca la corturile de festival. */
+function barValanceTexture() {
+  return canvasTexture(512, 32, (g, w, h) => {
+    for (let x = 0; x < w; x += 32) {
+      g.fillStyle = (x / 32) % 2 ? '#E7DFC6' : '#24402E'
+      g.fillRect(x, 0, 32, h)
+    }
+    g.fillStyle = 'rgba(0,0,0,.25)'
+    g.fillRect(0, h - 4, w, 4)
+  })
+}
+
+/** Firma unui bar: litere calde aprinse pe un panou inchis. */
+function barSignTexture() {
+  return canvasTexture(512, 128, (g, w, h) => {
+    g.fillStyle = '#14100B'
+    g.fillRect(0, 0, w, h)
+    g.strokeStyle = 'rgba(255,200,120,.45)'
+    g.lineWidth = 4
+    g.strokeRect(8, 8, w - 16, h - 16)
+    g.fillStyle = '#FFC67A'
+    g.font = '800 78px Inter, system-ui, sans-serif'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    g.fillText('BAR', w / 2, h / 2 + 4)
   })
 }
 
@@ -236,8 +268,25 @@ export function createProps(quality, rand, time) {
   const white = lit('#F3F5EC', 1.2)
   const green = lit('#30D158', 1.2)
 
-  // ---------- baruri: tejghea pe patru laturi, raftul din mijloc, acoperis in patru ape ----------
+  // ---------- baruri: corturi de panza, cu tejghea pe patru laturi, raftul din mijloc si firma aprinsa ----------
   const glows = []
+  // panza in dungi verde inchis si crem, ca la corturile de festival
+  const stripes = canvasTexture(64, 4, (g, w, h) => {
+    g.fillStyle = '#D8D0B6'
+    g.fillRect(0, 0, w / 2, h)
+    g.fillStyle = '#24402E'
+    g.fillRect(w / 2, 0, w / 2, h)
+  })
+  stripes.wrapS = THREE.RepeatWrapping
+  stripes.repeat.set(9, 1)
+  const barCanvas = new THREE.MeshStandardMaterial({ map: stripes, color: '#8E8775', roughness: 0.92, side: THREE.DoubleSide, emissive: '#FFD9A0', emissiveIntensity: 0.025 })
+  const barValance = barValanceTexture()
+  lettering.push(barValance)
+  const barValanceMat = new THREE.MeshStandardMaterial({ map: barValance, roughness: 0.85, side: THREE.DoubleSide, emissive: '#FFFFFF', emissiveMap: barValance, emissiveIntensity: 0.12 })
+  const barSign = barSignTexture()
+  lettering.push(barSign)
+  const barSignMat = new THREE.MeshBasicMaterial({ map: barSign, toneMapped: false, side: THREE.DoubleSide })
+  const barAlu = metal('#8C9393', 0.35)
   for (const b of LAYOUT.bars) {
     const along = b.d > b.w
     const L = along ? b.d : b.w
@@ -247,13 +296,27 @@ export function createProps(quality, rand, time) {
     batch.add(wood,
       at(box(L, 1.15, 0.5, 0, 0.575, D / 2 - 0.25)), at(box(L, 1.15, 0.5, 0, 0.575, -D / 2 + 0.25)),
       at(box(0.5, 1.15, D - 1, L / 2 - 0.25, 0.575, 0)), at(box(0.5, 1.15, D - 1, -L / 2 + 0.25, 0.575, 0)))
+    // blatul tejghelei, mai deschis, cu o margine peste lemn
+    batch.add(matte('#3A3328', 0.55),
+      at(box(L + 0.1, 0.06, 0.62, 0, 1.18, D / 2 - 0.25)), at(box(L + 0.1, 0.06, 0.62, 0, 1.18, -D / 2 + 0.25)))
     batch.add(dark, at(box(L - 3.4, 2.15, 0.7, 0, 1.075, 0)))
     for (const sz of [-1, 1]) {
       batch.add(warm, at(box(L - 3.6, 0.05, 0.05, 0, 1.45, sz * 0.38)))
       batch.add(sage, at(box(L - 3.6, 0.05, 0.05, 0, 1.92, sz * 0.38)), at(box(L + 1.3, 0.05, 0.05, 0, 3.22, sz * (D / 2 + 0.55))))
-      for (const sx of [-1, 0, 1]) batch.add(steel, at(box(0.13, 3.3, 0.13, sx * (L / 2 - 0.1), 1.65, sz * (D / 2 - 0.1))))
+      for (const sx of [-1, 0, 1]) batch.add(barAlu, at(strut(V(sx * (L / 2 - 0.1), 0, sz * (D / 2 - 0.1)), V(sx * (L / 2 - 0.1), 3.3, sz * (D / 2 - 0.1)), 0.065, 8)))
+      // firma aprinsa, agatata sub streasina, deasupra tejghelei
+      batch.add(barSignMat, at(place(new THREE.PlaneGeometry(2.6, 0.62), 0, 2.78, sz * (D / 2 + 0.62), 0, sz < 0 ? Math.PI : 0)))
     }
-    batch.add(canopy, at(hipRoof(L + 1.8, D + 1.8, 3.3, 4.75)))
+    // acoperisul de panza, cu frontoane si bordura in dungi
+    const half = (D + 1.8) / 2
+    batch.add(barCanvas, at(tentRoof(L + 1.8, half, 3.3, 4.75, Math.max(2, Math.round(L / 4.5)))))
+    for (const sx of [-1, 1]) batch.add(barCanvas, at(faces([[sx * (L + 1.8) / 2, 3.3, -half], [sx * (L + 1.8) / 2, 3.3, half], [sx * (L + 1.8) / 2, 4.75, 0]])))
+    const VH = 0.36
+    batch.add(barValanceMat,
+      at(place(new THREE.PlaneGeometry(L + 1.8, VH), 0, 3.3 - VH / 2 + 0.02, -half, 0, Math.PI)),
+      at(place(new THREE.PlaneGeometry(L + 1.8, VH), 0, 3.3 - VH / 2 + 0.02, half)),
+      at(place(new THREE.PlaneGeometry(D + 1.8, VH), -(L + 1.8) / 2, 3.3 - VH / 2 + 0.02, 0, 0, -Math.PI / 2)),
+      at(place(new THREE.PlaneGeometry(D + 1.8, VH), (L + 1.8) / 2, 3.3 - VH / 2 + 0.02, 0, 0, Math.PI / 2)))
     const g = glow('#FFD9A0', L * 0.95, 0.2)
     g.position.set(b.x, 2.3, b.z)
     group.add(g)
