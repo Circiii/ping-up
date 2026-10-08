@@ -127,7 +127,12 @@ function reveals(soft) {
       el.style.transform = 'translateY(26px)'
       if (soft) el.style.filter = 'blur(6px)'
     }
-    inView(items[0], () => {
+    // grupul intra odata, oricare element ar ajunge primul in ecran: si urcand de jos, si dupa un salt peste titlu
+    let started = false
+    const stop = inView(items, () => {
+      if (started) return
+      started = true
+      stop()
       const to = soft ? { opacity: 1, transform: 'translateY(0px)', filter: 'blur(0px)' } : { opacity: 1, transform: 'translateY(0px)' }
       animate(items, to, { duration: 0.7, ease: OUT, delay: stagger(gap) }).then(() => {
         for (const el of items) {
