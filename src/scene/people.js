@@ -552,9 +552,39 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
       m.frustumCulled = false
       m.visible = false
       mesh.add(m)
-      return { geo, m, n: 0 }
+      return { geo, m, n: 0, pos: geo.attributes.aPos.array, who: geo.attributes.aWho.array }
     }),
   )
+
+  // Datele fiecarui om, in tablouri, grupate pe variante: impartirea pe trepte le parcurge in fiecare cadru in care
+  // se misca camera, fara obiecte noi si fara cautari.
+  const crowdN = list.length
+  const P = new Float32Array(crowdN * 3)
+  const W = new Float32Array(crowdN * 4)
+  const R = new Int32Array(crowdN)
+  const VI = new Int32Array(crowdN)
+  const D = new Float32Array(crowdN)
+  const mark = new Int32Array(crowdN)
+  const nearIdx = new Int32Array(crowdN)
+  {
+    let k = 0
+    variants.forEach((v, vi) => {
+      for (const p of v.people) {
+        P[k * 3] = p.x
+        P[k * 3 + 1] = p.y
+        P[k * 3 + 2] = p.z
+        W[k * 4] = p.seed
+        W[k * 4 + 1] = p.energy
+        W[k * 4 + 2] = p.face
+        W[k * 4 + 3] = p.app ? 1 : 0
+        R[k] = rank.get(p)
+        VI[k] = vi
+        k++
+      }
+    })
+  }
+  const byDistance = (a, b) => D[a] - D[b]
+  let stamp = 0
 
   // de aproape forma fina, din multime una mai simpla, de departe cea mai simpla; pe telefoane mai putini fini.
   // Cine nu intra in cadru nu se deseneaza deloc.
@@ -568,49 +598,82 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   const dir = new THREE.Vector3()
   const frustum = new THREE.Frustum()
   const viewProj = new THREE.Matrix4()
-  const sphere = new THREE.Sphere(new THREE.Vector3(), 2.6)
-  const near = []
+  const NEAR2 = NEAR * NEAR
+  const MID2 = MID * MID
 
   function rebuild(camera) {
     const cam = camera.position
     last.copy(cam)
     camera.getWorldDirection(lastDir)
     dirty = false
-    near.length = 0
     viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
     frustum.setFromProjectionMatrix(viewProj)
+    const planes = frustum.planes
     for (const v of buckets) for (const b of v) b.n = 0
-    // cei mai apropiati, cel mult FINE, primesc forma fina
-    for (const v of variants) {
-      for (const p of v.people) {
-        p.lodD = -1
-        if (rank.get(p) >= keep) continue
-        sphere.center.set(p.x, p.y * 0.55, p.z)
-        if (!frustum.intersectsSphere(sphere)) continue
-        const d = (p.x - cam.x) ** 2 + (p.y - cam.y) ** 2 + (p.z - cam.z) ** 2
-        p.lodD = d
-        if (d < NEAR * NEAR) near.push(p)
-      }
-    }
-    if (near.length > FINE) near.sort((a, b) => a.lodD - b.lodD).length = FINE
-    const fine = new Set(near)
-    let shadowN = 0
-    variants.forEach((v, vi) => {
-      for (const p of v.people) {
-        if (p.lodD < 0) continue
-        // umbre doar unde se vede solul de aproape
-        if (p.lodD < MID * MID) {
-          shadowGeo.attributes.aPos.setXYZ(shadowN, p.x, p.y, p.z)
-          shadowGeo.attributes.aWho.setXYZW(shadowN, p.seed, p.energy, p.face, 0)
-          shadowN++
+    const cx = cam.x
+    const cy = cam.y
+    const cz = cam.z
+    // cine se vede (o sfera in jurul fiecarui om, fata de cele sase planuri ale cadrului) si cat de departe e
+    let nn = 0
+    for (let i = 0; i < crowdN; i++) {
+      D[i] = -1
+      if (R[i] >= keep) continue
+      const x = P[i * 3]
+      const y = P[i * 3 + 1]
+      const z = P[i * 3 + 2]
+      let seen = true
+      for (let j = 0; j < 6; j++) {
+        const n = planes[j].normal
+        if (n.x * x + n.y * y * 0.55 + n.z * z + planes[j].constant < -2.6) {
+          seen = false
+          break
         }
-        const level = fine.has(p) ? 0 : p.lodD < MID * MID ? 1 : 2
-        const b = buckets[vi][Math.min(level, buckets[vi].length - 1)]
-        b.geo.attributes.aPos.setXYZ(b.n, p.x, p.y, p.z)
-        b.geo.attributes.aWho.setXYZW(b.n, p.seed, p.energy, p.face, p.app ? 1 : 0)
-        b.n++
       }
-    })
+      if (!seen) continue
+      const d = (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz)
+      D[i] = d
+      if (d < NEAR2) nearIdx[nn++] = i
+    }
+    // cei mai apropiati, cel mult FINE, primesc forma fina
+    if (nn > FINE) {
+      nearIdx.subarray(0, nn).sort(byDistance)
+      nn = FINE
+    }
+    stamp++
+    for (let j = 0; j < nn; j++) mark[nearIdx[j]] = stamp
+    let shadowN = 0
+    const sP = shadowGeo.attributes.aPos.array
+    const sW = shadowGeo.attributes.aWho.array
+    for (let i = 0; i < crowdN; i++) {
+      const d = D[i]
+      if (d < 0) continue
+      const x = P[i * 3]
+      const y = P[i * 3 + 1]
+      const z = P[i * 3 + 2]
+      // umbre doar unde se vede solul de aproape
+      if (d < MID2) {
+        sP[shadowN * 3] = x
+        sP[shadowN * 3 + 1] = y
+        sP[shadowN * 3 + 2] = z
+        sW[shadowN * 4] = W[i * 4]
+        sW[shadowN * 4 + 1] = W[i * 4 + 1]
+        sW[shadowN * 4 + 2] = W[i * 4 + 2]
+        sW[shadowN * 4 + 3] = 0
+        shadowN++
+      }
+      const level = mark[i] === stamp ? 0 : d < MID2 ? 1 : 2
+      const vb = buckets[VI[i]]
+      const b = vb[level < vb.length ? level : vb.length - 1]
+      const n = b.n
+      b.pos[n * 3] = x
+      b.pos[n * 3 + 1] = y
+      b.pos[n * 3 + 2] = z
+      b.who[n * 4] = W[i * 4]
+      b.who[n * 4 + 1] = W[i * 4 + 1]
+      b.who[n * 4 + 2] = W[i * 4 + 2]
+      b.who[n * 4 + 3] = W[i * 4 + 3]
+      b.n = n + 1
+    }
     shadowGeo.instanceCount = shadowN
     if (shadowN) {
       shadowGeo.attributes.aPos.addUpdateRange(0, shadowN * 3)
