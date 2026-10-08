@@ -57,22 +57,40 @@ function cellLinks(phones, top, count, time) {
   return { lines, uniforms }
 }
 
-/** Cerul de noapte: mai deschis la orizont, cu lumina scenei si cateva stele. */
+/**
+ * Cerul de noapte: negru sus, iar jos ceata prinde lumina oraselor din jur. Deasupra scenei ceata e luminata de
+ * proiectoare, in culoarea lor. La orizont, padurea de la marginea campului, ca o silueta.
+ */
 function sky(time) {
   const group = new THREE.Group()
-  const uniforms = { uStage: { value: 1 } }
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), new THREE.ShaderMaterial({
+  const uniforms = { uStage: { value: 1 }, uStageCol: { value: new THREE.Color('#EAF6EC') } }
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 24), new THREE.ShaderMaterial({
     uniforms,
     vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }',
     fragmentShader: /* glsl */ `
       uniform float uStage;
+      uniform vec3 uStageCol;
       varying vec3 vDir;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
       void main() {
-        float h = clamp(vDir.y, 0.0, 1.0);
-        vec3 col = mix(vec3(0.0085, 0.0105, 0.0092), vec3(0.0016, 0.002, 0.0019), sqrt(h));
-        vec3 toStage = normalize(vec3(0.0, 0.05, -1.0));
-        float glow = pow(max(dot(vDir, toStage), 0.0), 9.0) * exp(-h * 6.0);
-        col += vec3(0.012, 0.02, 0.015) * glow * uStage;
+        float h = vDir.y;
+        float up = clamp(h, 0.0, 1.0);
+        vec3 col = mix(vec3(0.0135, 0.0125, 0.011), vec3(0.0013, 0.0017, 0.0016), pow(up, 0.42));
+        // ceata de deasupra scenei, luminata de proiectoare
+        vec3 toStage = normalize(vec3(0.0, 0.1, -1.0));
+        float glow = pow(max(dot(vDir, toStage), 0.0), 7.0) * exp(-up * 4.0);
+        col += uStageCol * glow * 0.04 * uStage;
+        // padurea: o creasta zimtata, calculata pe cerc, ca sa nu aiba cusatura
+        vec2 c = normalize(vDir.xz + 1e-5);
+        float ridge = 0.012 + 0.016 * noise(c * 7.0) + 0.009 * noise(c * 23.0 + 7.0) + 0.0045 * noise(c * 70.0 + 13.0);
+        float wood = 1.0 - smoothstep(ridge - 0.0015, ridge + 0.0015, h);
+        col = mix(col, vec3(0.0034, 0.0044, 0.0038), wood);
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }
@@ -161,6 +179,7 @@ export function createSet(phones, quality, models = null) {
       const light = stages.update(t, dt, (t * BPM) / 60, s)
       props.update(t, s)
       heaven.uniforms.uStage.value = light.level
+      heaven.uniforms.uStageCol.value.copy(light.color)
       cell.uniforms.uOn.value = s.tower
       cell.uniforms.uLoss.value = s.loss
       return light
