@@ -79,6 +79,12 @@ const icons = {
   chevron: 'bold/caret-right-bold',
   flag: 'regular/flag',
   more: 'bold/dots-three-bold',
+  phone: 'regular/device-mobile',
+  graph: 'regular/graph',
+  package: 'regular/package',
+  key: 'regular/lock-key',
+  timer: 'regular/clock-countdown',
+  gauge: 'regular/gauge',
 }
 
 function sprite() {

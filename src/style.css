@@ -752,23 +752,40 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   border-radius: 32px 32px 0 0;
 }
 .rider ::selection { background: var(--sage-ink); color: var(--sage); }
-.rider__head { display: grid; gap: 16px; max-width: 44rem; }
+/* titlul la stanga, explicatia la dreapta, asezata pe aceeasi linie de jos */
+.rider__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 27rem); align-items: end; gap: 16px clamp(32px, 6vw, 96px); }
 .rider__head p { font-size: var(--t-lead); letter-spacing: -.016em; color: var(--sage-ink-2); text-wrap: pretty; }
-.rider__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px clamp(24px, 3vw, 48px); }
-.spec { position: relative; }
+/* Foaia tehnica, ca riderul unei trupe: o linie groasa sus, apoi o retea de linii subtiri intre grupuri.
+   Coloanele de pe margine stau lipite de text; liniile verticale apar doar intre coloane. */
+.rider__grid {
+  --cols: 3;
+  --rule: rgb(18 24 18 / .16);
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  border-top: 1.5px solid var(--sage-ink);
+}
+.spec {
+  --px: clamp(20px, 2.6vw, 40px);
+  position: relative;
+  padding: 26px var(--px) 34px;
+  border-bottom: 1px solid var(--rule);
+  box-shadow: inset 1px 0 0 var(--rule);
+}
+.spec:nth-child(3n + 1) { padding-left: 0; box-shadow: none; }
+.spec:nth-child(3n) { padding-right: 0; }
 .spec::before {
-  content: ''; position: absolute; inset: -16px -18px; border-radius: 18px; pointer-events: none;
+  content: ''; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgb(18 24 18 / .075), transparent 70%);
   opacity: 0; transition: opacity .35s var(--ease);
 }
 @media (pointer: fine) {
   .spec:hover::before { opacity: 1; }
 }
-.spec h3 { font-size: 1.125rem; font-weight: 680; letter-spacing: -.015em; padding-bottom: 10px; border-bottom: 1.5px solid var(--sage-ink); }
+.spec h3 { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; font-size: 1.125rem; font-weight: 680; letter-spacing: -.015em; }
+.spec h3 .i { width: 22px; height: 22px; color: var(--forest); }
 .spec dl div {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px;
   padding: 10px 0;
-  border-bottom: 1px solid rgb(18 24 18 / .16);
+  border-top: 1px solid rgb(18 24 18 / .1);
   font-size: .9375rem; line-height: 1.4;
 }
 .spec dt { color: var(--sage-ink-2); }
@@ -904,7 +921,10 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 
 @media (max-width: 1180px) {
   .phone { --k: .6; }
-  .rider__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rider__grid { --cols: 2; }
+  .spec:nth-child(3n + 1), .spec:nth-child(3n) { padding: 26px var(--px) 34px; box-shadow: inset 1px 0 0 var(--rule); }
+  .spec:nth-child(2n + 1) { padding-left: 0; box-shadow: none; }
+  .spec:nth-child(2n) { padding-right: 0; }
 }
 
 /* telefonul trebuie sa incapa sub bara de sus si pe ecranele joase de laptop */
@@ -1040,7 +1060,9 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 @media (max-width: 640px) {
   .hero { align-items: flex-end; padding-bottom: 40px; }
   .hero__copy { gap: 20px; }
-  .rider__grid { grid-template-columns: minmax(0, 1fr); }
+  .rider__head { grid-template-columns: minmax(0, 1fr); }
+  .rider__grid { --cols: 1; }
+  .spec:nth-child(n) { padding: 22px 0 28px; box-shadow: none; }
   .spec dl div { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .foot { grid-template-columns: minmax(0, 1fr); }
   :is(.states, .steps) li { --pad: 5px; --lh: 20px; font-size: .875rem; }
