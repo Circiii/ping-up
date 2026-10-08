@@ -312,8 +312,11 @@ export function createStory(scene, { reduce = false } = {}) {
     // bara de sus: cobori prin poveste, se retrage; urci putin, revine. Intre ele, un prag, ca sa nu clipeasca.
     const dy = exact - lastExact
     lastExact = exact
-    if (Math.sign(dy) !== Math.sign(travel)) travel = 0
-    travel += dy
+    // cadrele in care pagina sta pe loc nu sterg drumul strans: derularea lenta sau in pasi il aduna si ea
+    if (dy) {
+      if (Math.sign(dy) !== Math.sign(travel)) travel = 0
+      travel += dy
+    }
     const tuck = inStory && !nearTop && !dom.nav.classList.contains('is-open') && !dom.nav.contains(document.activeElement)
     if (!tuck || travel < -40) dom.nav.classList.remove('is-tucked')
     else if (travel > 120) dom.nav.classList.add('is-tucked')
