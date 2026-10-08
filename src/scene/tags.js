@@ -24,7 +24,8 @@ export function createTags(layer) {
   const placed = []
   const overlaps = (r) => placed.some((p) => r[0] < p[2] + GAP && r[2] > p[0] - GAP && r[1] < p[3] + GAP && r[3] > p[1] - GAP)
 
-  function update(camera, width, height, visible) {
+  /** `top`: inaltimea barii de sus; o eticheta care ar intra pe sub ea nu se mai arata pe jumatate. */
+  function update(camera, width, height, visible, top = 0) {
     placed.length = 0
     for (const [id, tag] of tags) {
       const want = visible.has(id)
@@ -47,7 +48,7 @@ export function createTags(layer) {
           const top = y + d + tag.h * tag.shift
           return [x - tag.w / 2, top, x + tag.w / 2, top + tag.h]
         }
-        const fit = tries.find((d) => !overlaps(box(d)))
+        const fit = tries.find((d) => box(d)[1] >= top && !overlaps(box(d)))
         if (fit === undefined) on = false
         else {
           dy = fit

@@ -296,6 +296,8 @@ export function createScene(canvas, quality) {
   const post = quality.low ? null : createPost(renderer, scene, camera, quality)
 
   const size = { w: 1, h: 1, dpr: 0 }
+  const nav = document.querySelector('.nav')
+  let navH = 0
   function resize(w, h) {
     // panza ascunsa (0 x 0) nu are ce desena; reluam cand primeste din nou o marime
     if (!w || !h) return
@@ -304,6 +306,7 @@ export function createScene(canvas, quality) {
     size.w = w
     size.h = h
     size.dpr = renderer.getPixelRatio()
+    navH = nav ? nav.offsetHeight + 4 : 0
     renderer.setSize(w, h, false)
     camera.aspect = w / h
     camera.updateProjectionMatrix()
@@ -451,7 +454,7 @@ export function createScene(canvas, quality) {
     }
     handoff.commit()
 
-    tags.update(camera, size.w, size.h, s.tags)
+    tags.update(camera, size.w, size.h, s.tags, navH)
     if (post) post.render(t, dt)
     else renderer.render(scene, camera)
   }
