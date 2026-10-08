@@ -477,17 +477,34 @@
 </main>
 
 <footer class="foot">
-  <div class="foot__brand">
-    <img src="favicon.svg" alt="" width="40" height="40">
-    <p><b>{{APP_NAME}}</b><span>Mesaje care sar din telefon în telefon.</span></p>
+  <div class="foot__top">
+    <div class="foot__brand">
+      <img src="favicon.svg" alt="" width="40" height="40">
+      <p><b>{{APP_NAME}}</b><span>Mesaje care sar din telefon în telefon.</span></p>
+    </div>
+    <nav class="foot__nav" aria-label="Subsol">
+      <div>
+        <h2 class="foot__h">Aplicația</h2>
+        <ul>
+          <li><a href="#descarca">Descarcă</a></li>
+          <li><a href="https://github.com/dulgherustefan/PingUp" rel="noopener">Codul sursă</a></li>
+          <li><a href="confidentialitate.html">Confidențialitate</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="foot__h">Pagina</h2>
+        <ul>
+          <li><a href="#cade">Cum merge</a></li>
+          <li><a href="#sigilat">Siguranță</a></li>
+          <li><a href="#rider">Rider tehnic</a></li>
+          <li><a href="#intrebari">Întrebări</a></li>
+        </ul>
+      </div>
+    </nav>
+    <a class="link foot__up" href="#acasa"><span>Înapoi sus</span><span class="link__dot"><svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></span></a>
   </div>
-  <ul class="foot__links">
-    <li><a href="#descarca">Descarcă</a></li>
-    <li><a href="https://github.com/dulgherustefan/PingUp" rel="noopener">Codul sursă</a></li>
-    <li><a href="confidentialitate.html">Confidențialitate</a></li>
-    <li><span>Versiunea <span data-apk-version>{{VERSION}}</span></span></li>
-  </ul>
-  <p class="foot__legal">Font Inter (SIL Open Font License). Iconițe Phosphor (MIT). three.js, Motion și qrcode-generator (MIT). Oamenii 3D: Quaternius (CC0). Texturi: Poly Haven (CC0). <a href="licente.txt">Licențele</a></p>
+  <p class="foot__legal">Versiunea <span data-apk-version>{{VERSION}}</span>. Font Inter (SIL Open Font License). Iconițe Phosphor (MIT). three.js, Motion și qrcode-generator (MIT). Oamenii 3D: Quaternius (CC0). Texturi: Poly Haven (CC0). <a href="licente.txt">Licențele</a></p>
+  <p class="foot__mark" aria-hidden="true">{{APP_NAME}}</p>
 </footer>
 
 <div class="curtain" aria-hidden="true"></div>

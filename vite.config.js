@@ -58,6 +58,7 @@ const icons = {
   download: 'regular/download-simple',
   android: 'fill/android-logo-fill',
   'arrow-down': 'regular/arrow-down',
+  'arrow-up': 'regular/arrow-up',
   check: 'bold/check-bold',
   lock: 'regular/lock-simple',
   copy: 'regular/copy',
