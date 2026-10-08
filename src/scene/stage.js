@@ -1,8 +1,8 @@
 // Scenele festivalului: grinzi cu zabrele, acoperis, ecrane LED, boxe si reflectoare care se misca pe ritm.
 import * as THREE from 'three'
-import { aim, Batch, beam, box, glow, ledWall, lit, matte, merge, metal, place, truss, trussBetween } from './kit.js'
+import { aim, Batch, beam, box, canvasTexture, glow, ledWall, lightPoints, lit, matte, merge, metal, place, strut, truss, trussBetween } from './kit.js'
 import { performerGeometry, personGeometry } from './people.js'
-import { STAGE, STAGE2 } from './world.js'
+import { LAYOUT, STAGE, STAGE2 } from './world.js'
 
 export const BPM = 124
 
@@ -83,6 +83,81 @@ const LOOKS = [
   { color: new THREE.Color('#D3D8B2'), sky: 1, aim: (u, t) => [u * 0.5 + 0.22 * Math.sin(t * 0.35 + u * 1.5), 2.2 + 0.22 * Math.sin(t * 0.45 + u * 2)] },
   { color: new THREE.Color('#EAF6EC'), sky: 0.6, aim: (u, t) => [u * 0.45 + 0.8 * Math.sin(t * 0.55 + u * 0.6), 1.2 + 0.2 * Math.sin(t * 0.8 + u * 2.5)] },
 ]
+
+/** Banda tiparita din fata acoperisului: numele festivalului la mijloc, mesajul aplicatiei spre margini. */
+function fasciaTexture() {
+  return canvasTexture(2048, 96, (g, w, h) => {
+    g.fillStyle = '#0F1310'
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = 'rgba(211,216,178,.55)'
+    g.fillRect(0, 6, w, 2)
+    g.fillRect(0, h - 8, w, 2)
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    g.fillStyle = '#E8ECDF'
+    g.font = '800 58px Inter, system-ui, sans-serif'
+    g.fillText('PING UP', w / 2, h / 2 + 3)
+    g.fillStyle = 'rgba(211,216,178,.7)'
+    g.font = '700 30px Inter, system-ui, sans-serif'
+    for (const x of [w * 0.2, w * 0.8]) g.fillText('MESAJE FĂRĂ SEMNAL', x, h / 2 + 2)
+    g.fillStyle = '#30D158'
+    for (const x of [w * 0.4, w * 0.6]) {
+      g.beginPath()
+      g.arc(x, h / 2, 7, 0, Math.PI * 2)
+      g.fill()
+    }
+  })
+}
+
+/** Plasa neagra de pe schela aripilor: tesatura deasa, cu umbra tevilor de dedesubt. */
+function scrimTexture() {
+  const tex = canvasTexture(128, 128, (g, w, h) => {
+    g.fillStyle = '#0E1011'
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = 'rgba(0,0,0,.6)'
+    g.fillRect(0, 60, w, 8)
+    g.fillRect(60, 0, 6, h)
+    g.fillStyle = 'rgba(255,255,255,.035)'
+    for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1)
+  })
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(4, 6)
+  return tex
+}
+
+/** Fata unei boxe: grila perforata, cu rama de metal. */
+function grilleTexture() {
+  return canvasTexture(128, 48, (g, w, h) => {
+    g.fillStyle = '#1B1F1D'
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = '#0A0C0B'
+    for (let y = 4; y < h - 3; y += 3) for (let x = 4 + (y % 2); x < w - 3; x += 3) g.fillRect(x, y, 1.6, 1.6)
+    g.strokeStyle = 'rgba(200,210,205,.22)'
+    g.lineWidth = 2
+    g.strokeRect(1, 1, w - 2, h - 2)
+  })
+}
+
+/** Banda pe arcul acoperisului: aceeasi curba ca panza, `height` in jos de la margine. */
+function archStrip(half, top, height, z) {
+  const N = 40
+  const pos = []
+  const uv = []
+  const index = []
+  for (let i = 0; i <= N; i++) {
+    const x = -half + (i / N) * 2 * half
+    const y = top + 0.85 + 2.5 * (1 - (x / half) ** 2) + 0.02
+    pos.push(x, y, z, x, y - height, z)
+    uv.push(i / N, 1, i / N, 0)
+    if (i < N) index.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3)
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(index)
+  g.computeVertexNormals()
+  return g
+}
 
 const LED_TEXT = {
   logo: [['PING UP', '#F4F6F0', 0.46, 0.5]],
@@ -184,6 +259,90 @@ export function createStages(quality, time, models = null) {
 
   const figures = [performer(X, 1.8, F - 3.5, 1.75, 0), performer(X - 6.4, 1.8, F - 3.1, 1.66, 0.3), performer(X + 6.1, 1.8, F - 3.3, 1.7, -0.35)]
   group.add(new THREE.Mesh(merge(figures), shadow))
+
+  // ---------- ce face o scena sa arate ca la festival ----------
+  // frontonul: banda tiparita de pe arcul acoperisului, prinsa in lumina scenei
+  const fasciaTex = fasciaTexture()
+  group.add(new THREE.Mesh(archStrip(W + 3, TOP, 1.75, F + 1.55), new THREE.MeshStandardMaterial({ map: fasciaTex, roughness: 0.9, emissive: '#ffffff', emissiveMap: fasciaTex, emissiveIntensity: 0.06 })))
+  // aripile: schela imbracata in plasa neagra, de la pamant pana deasupra ecranelor laterale
+  const scrim = new THREE.MeshStandardMaterial({ map: scrimTexture(), roughness: 0.96, side: THREE.DoubleSide })
+  for (const sx of [-1, 1]) {
+    batch.add(scrim, place(new THREE.PlaneGeometry(10, 15.4), X + sx * (W + 6.1), 7.7, F - 1.85, 0, -sx * 0.2))
+    // tevile schelei, pe muchia din afara si sus
+    const ox = X + sx * (W + 11)
+    batch.add(steel,
+      strut(V(ox, 0, F - 1.4), V(ox, 15.6, F - 1.4), 0.07, 6), strut(V(ox, 0, F - 3.6), V(ox, 15.6, F - 3.6), 0.07, 6),
+      strut(V(X + sx * (W + 1.4), 15.5, F - 1.4), V(ox, 15.5, F - 1.4), 0.06, 6))
+    for (let y = 2; y < 15; y += 2.6) batch.add(steel, strut(V(ox, y, F - 1.4), V(ox, y, F - 3.6), 0.05, 5))
+  }
+  // fata boxelor agatate: grila perforata, pe fiecare cutie
+  const grille = new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.7, metalness: 0.3 })
+  for (const sx of [-1, 1]) {
+    for (let k = 0; k < 9; k++) {
+      const tilt = k * 0.042
+      batch.add(grille, place(new THREE.PlaneGeometry(1.5, 0.52).translate(0, 0, 0.48), X + sx * (W + 3.2), 16.7 - k * 0.63 - k * k * 0.006, F + 0.9 - k * k * 0.014, tilt))
+    }
+  }
+  for (let i = 0; i < 10; i++) batch.add(grille, place(new THREE.PlaneGeometry(2.15, 1.05), X - 11.25 + i * 2.5, 0.575, F + 2.01))
+  // monitoarele de pe marginea scenei, intoarse spre artisti
+  for (const x of [-9, -5.5, -2, 2, 5.5, 9]) batch.add(dark, box(0.72, 0.36, 0.52, X + x, 1.98, F - 0.55, 0.5))
+
+  // ---------- turnurile de boxe din multime: schela, un sir mic de boxe spre cei din spate, lumina de balizaj ----------
+  const ballast = matte('#3A3D3B', 0.95)
+  const towerTops = []
+  for (const d of LAYOUT.delays) {
+    const h = 9.2
+    const r = 0.8
+    const legs = [[-r, -r], [r, -r], [r, r], [-r, r]].map(([dx, dz]) => V(d.x + dx, 0, d.z + dz))
+    for (const p of legs) batch.add(steel, strut(p, V(p.x, h, p.z), 0.06, 6))
+    for (let y = 0.4; y < h; y += 2.2) {
+      for (let i = 0; i < 4; i++) {
+        const a = legs[i]
+        const b = legs[(i + 1) % 4]
+        batch.add(steel, strut(V(a.x, y, a.z), V(b.x, y, b.z), 0.04, 5), strut(V(a.x, y, a.z), V(b.x, Math.min(h, y + 2.2), b.z), 0.03, 4))
+      }
+    }
+    batch.add(ballast, box(2.4, 0.5, 2.4, d.x, 0.25, d.z))
+    batch.add(dark, box(2, 0.12, 2, d.x, h, d.z), box(1.5, 0.16, 0.9, d.x, h - 0.35, d.z + 0.2))
+    for (let k = 0; k < 5; k++) {
+      const tilt = -0.06 - k * 0.05
+      const y = h - 0.75 - k * 0.5
+      batch.add(dark, box(1.3, 0.46, 0.8, d.x, y, d.z + 0.3 + k * 0.03, tilt))
+      batch.add(grille, place(new THREE.PlaneGeometry(1.25, 0.42).translate(0, 0, 0.41), d.x, y, d.z + 0.3 + k * 0.03, tilt))
+    }
+    towerTops.push(d.x, h + 0.35, d.z)
+    batch.add(steel, strut(V(d.x, h, d.z), V(d.x, h + 0.3, d.z), 0.04, 5))
+  }
+
+  // ---------- turnul de mixaj: platforma pe schela, copertina neagra, pupitrele aprinse ----------
+  const foh = LAYOUT.foh
+  const fw = foh.w / 2
+  const fd = foh.d / 2
+  const deck = 1.5
+  const roofY = 4.4
+  for (const [dx, dz] of [[-fw, -fd], [fw, -fd], [fw, fd], [-fw, fd], [0, -fd], [0, fd]]) {
+    batch.add(steel, strut(V(foh.x + dx, 0, foh.z + dz), V(foh.x + dx, roofY, foh.z + dz), 0.06, 6))
+  }
+  batch.add(deckMat, box(foh.w, 0.18, foh.d, foh.x, deck, foh.z))
+  batch.add(scrim, place(new THREE.PlaneGeometry(foh.w, deck), foh.x, deck / 2, foh.z - fd, 0, Math.PI), place(new THREE.PlaneGeometry(foh.d, deck), foh.x - fw, deck / 2, foh.z, 0, -Math.PI / 2), place(new THREE.PlaneGeometry(foh.d, deck), foh.x + fw, deck / 2, foh.z, 0, Math.PI / 2))
+  // copertina in doua ape, cu fata spre scena
+  const roofFoh = new THREE.PlaneGeometry(foh.w + 0.8, foh.d + 0.9)
+  roofFoh.rotateX(-Math.PI / 2 + 0.12)
+  batch.add(canvas, place(roofFoh, foh.x, roofY + 0.25, foh.z))
+  batch.add(canvas, place(new THREE.PlaneGeometry(foh.w + 0.8, 0.7), foh.x, roofY - 0.05, foh.z - fd - 0.45, 0, Math.PI))
+  // pupitrele de sunet si de lumini, cu ecranele lor
+  const desks = []
+  for (const dx of [-1.5, 1.4]) {
+    batch.add(dark, box(2.2, 0.9, 1, foh.x + dx, deck + 0.45, foh.z - 0.9), box(2.2, 0.1, 1.1, foh.x + dx, deck + 0.95, foh.z - 0.95, -0.25))
+    desks.push(place(new THREE.PlaneGeometry(0.62, 0.34), foh.x + dx - 0.5, deck + 1.3, foh.z - 1.02, -0.45, Math.PI), place(new THREE.PlaneGeometry(0.62, 0.34), foh.x + dx + 0.5, deck + 1.3, foh.z - 1.02, -0.45, Math.PI))
+  }
+  batch.add(lit('#9FC9FF', 0.55), ...desks)
+  // gardul din jurul turnului
+  const fence = []
+  for (let x = -fw - 0.6; x < fw + 0.6; x += 1.15) fence.push(box(1.1, 0.06, 0.06, foh.x + x + 0.55, 1.05, foh.z - fd - 0.6), box(0.06, 1.05, 0.06, foh.x + x, 0.52, foh.z - fd - 0.6))
+  batch.add(metal('#414A44', 0.35), ...fence)
+  const beacons = lightPoints(towerTops, [0, 0.5], '#FF453A', 9, time)
+  group.add(beacons.points)
 
   // ---------- luminile scenei mari ----------
   const low = quality.low
@@ -382,10 +541,12 @@ export function createStages(quality, time, models = null) {
   function setView(w, h, dpr) {
     lens.uniforms.uDpr.value = dpr
     lens2.uniforms.uDpr.value = dpr
+    beacons.uniforms.uDpr.value = dpr
   }
 
   function redrawText() {
     for (const wall of [led, ...sideLeds, booth, led2]) wall.redraw()
+    fasciaTex.userData.repaint()
   }
 
   return { group, update, setView, redrawText }

@@ -96,6 +96,9 @@ export const LAYOUT = {
   ]),
   // cortul medical sta in spatele telefonului echipei, deschis spre nord si spre vest
   tent: { x: SPOTS.tent[0] + 0.6, z: SPOTS.tent[1] + 3.9, w: 8.4, d: 6.2 },
+  // turnul de mixaj (FOH) in mijlocul multimii, putin intr-o parte, si doua turnuri de boxe pentru cei din spate
+  foh: { x: 3, z: STAGE.front + 24, w: 6.4, d: 5.2 },
+  delays: [-17, 17].map((x) => ({ x, z: STAGE.front + 25 })),
   gates: { xs: [-35, -24, -13], z: zone.entrance.z1 - 2.5 },
 }
 
@@ -108,6 +111,25 @@ export function blocked(x, z, pad = 0.45) {
   if (hit(t.x, t.z, t.w / 2, t.d / 2)) return true
   for (const gx of LAYOUT.gates.xs) if (hit(gx - 2.6, LAYOUT.gates.z, 0.5, 0.9) || hit(gx + 2.6, LAYOUT.gates.z, 0.5, 0.9)) return true
   return false
+}
+
+/**
+ * Turnul de mixaj si turnurile de boxe au venit dupa multime: cine ar sta pe ele face un pas pana la marginea lor,
+ * fara sa se mai traga la sorti nimic, ca toti ceilalti (si drumul mesajelor prin ei) sa ramana unde erau.
+ */
+export function stepAside(x, z, pad = 0.45) {
+  const f = LAYOUT.foh
+  const rects = [[f.x, f.z, f.w / 2 + 0.6, f.d / 2 + 0.6], ...LAYOUT.delays.map((d) => [d.x, d.z, 1.5, 1.5])]
+  for (const [cx, cz, hw, hd] of rects) {
+    const dx = x - cx
+    const dz = z - cz
+    const ex = hw + pad - Math.abs(dx)
+    const ez = hd + pad - Math.abs(dz)
+    if (ex <= 0 || ez <= 0) continue
+    if (ex < ez) x = cx + Math.sign(dx || 1) * (hw + pad)
+    else z = cz + Math.sign(dz || 1) * (hd + pad)
+  }
+  return [x, z]
 }
 
 /** Distanta in metri intre doua puncte ale scenei. */

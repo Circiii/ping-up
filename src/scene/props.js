@@ -1,7 +1,7 @@
 // Restul festivalului: baruri, rulote cu mancare, cortul medical, portile, campingul, copacii, felinarele, gardul, antena.
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { Batch, box, glow, lightPoints, lit, matte, merge, metal, place, stringLights, strut, truss, trussBetween } from './kit.js'
+import { Batch, box, canvasTexture, glow, lightPoints, lit, matte, merge, metal, place, stringLights, strut, truss, trussBetween } from './kit.js'
 import { bounds, LAYOUT, meeting, pois, STAGE2, zone } from './world.js'
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z)
@@ -31,21 +31,6 @@ function put(geo, x, z, ry = 0) {
   if (ry) geo.rotateY(ry)
   geo.translate(x, 0, z)
   return geo
-}
-
-function canvasTexture(w, h, draw) {
-  const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
-  const paint = () => draw(c.getContext('2d'), w, h)
-  paint()
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.userData.repaint = () => {
-    paint()
-    tex.needsUpdate = true
-  }
-  return tex
 }
 
 function textTexture(text, color, bg) {

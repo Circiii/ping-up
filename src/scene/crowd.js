@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { BOUNCE } from './people.js'
-import { blocked, inside, LAYOUT, SPOTS, STAGE, STAGE2, zone } from './world.js'
+import { blocked, inside, LAYOUT, SPOTS, STAGE, STAGE2, stepAside, zone } from './world.js'
 
 export function rng(seed) {
   let s = seed >>> 0
@@ -126,6 +126,8 @@ export function generate(density = 1) {
     else add(-48 + rand() * 13, -12 + rand() * 40)
   }
 
+  // cine a nimerit pe turnul de mixaj sau pe un turn de boxe face un pas pana la marginea lui
+  for (const p of phones) [p.x, p.z] = stepAside(p.x, p.z)
   return phones
 }
 

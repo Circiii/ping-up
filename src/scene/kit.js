@@ -7,6 +7,22 @@ export const matte = (hex, rough = 0.92) => new THREE.MeshStandardMaterial({ col
 /** Suprafata care lumineaza singura: peste 1 intra in stralucirea din post-procesare. */
 export const lit = (hex, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(k), toneMapped: false })
 
+/** Textura desenata pe canvas; `repaint` o redeseneaza (de exemplu cand vine fontul). */
+export function canvasTexture(w, h, draw) {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const paint = () => draw(c.getContext('2d'), w, h)
+  paint()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.userData.repaint = () => {
+    paint()
+    tex.needsUpdate = true
+  }
+  return tex
+}
+
 const KEEP = new Set(['position', 'normal', 'uv'])
 
 /** Aduce o geometrie la forma comuna (fara index; pozitie, normala, uv), o roteste (x, y, z) si o muta. */
