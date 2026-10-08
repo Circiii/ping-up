@@ -423,7 +423,8 @@ export function createScene(canvas, quality) {
       const by = lifted(b, beat, s.stage)
       pack.position.set(a.x + (b.x - a.x) * e, ay + (by - ay) * e + 0.5 + Math.sin(e * Math.PI) * 0.9, a.z + (b.z - a.z) * e)
       sealed.icon.material.rotation = Math.sin(t * 2.1) * 0.1
-      pack.scale.setScalar(s.capsule)
+      // cand trece pe langa camera nu creste peste marimea de la 7 unitati: altfel acopera un colt de ecran
+      pack.scale.setScalar(s.capsule * Math.min(1, camera.position.distanceTo(pack.position) / 7))
       glowU.set(pack.position.x, pack.position.y, pack.position.z, 2.6 * s.capsule)
     }
 
