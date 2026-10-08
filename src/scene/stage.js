@@ -99,7 +99,8 @@ export function createStages(quality, time, models = null) {
   const group = new THREE.Group()
   const dark = matte('#0B0E0C')
   const deckMat = matte('#121613', 0.8)
-  const steel = metal('#2C342E', 0.42)
+  // aluminiul grinzilor prinde lumina reflectoarelor
+  const steel = metal('#7D8584', 0.34)
   const canvas = new THREE.MeshStandardMaterial({ color: '#0D110F', roughness: 0.95, side: THREE.DoubleSide })
   const shadow = new THREE.MeshBasicMaterial({ color: '#030504' })
   const edge = lit('#D3D8B2', 0.9)

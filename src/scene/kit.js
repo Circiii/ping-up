@@ -50,14 +50,15 @@ export class Batch {
 }
 
 /**
- * Grinda cu zabrele, ca la scenele de concert: patru tevi lungi si diagonale in zigzag pe fiecare fata.
- * Creste pe +Y de la 0 la `len`; `size` e latura sectiunii.
+ * Grinda cu zabrele, ca la scenele de concert: patru tevi lungi, diagonale in zigzag pe fiecare fata si traverse
+ * la capatul fiecarui segment. Creste pe +Y de la 0 la `len`; `size` e latura sectiunii.
  */
 export function truss(len, size = 1) {
-  const t = size * 0.1
+  const r = size * 0.05
   const h = size / 2
+  const tube = (radius, length, sides) => new THREE.CylinderGeometry(radius, radius, length, sides, 1, true)
   const parts = []
-  for (const [x, z] of [[-h, -h], [h, -h], [h, h], [-h, h]]) parts.push(box(t, len, t, x, len / 2, z))
+  for (const [x, z] of [[-h, -h], [h, -h], [h, h], [-h, h]]) parts.push(place(tube(r, len, 6), x, len / 2, z))
   const bays = Math.max(1, Math.round(len / size))
   const bay = len / bays
   const diag = Math.hypot(size, bay)
@@ -65,8 +66,12 @@ export function truss(len, size = 1) {
   for (let i = 0; i < bays; i++) {
     const y = (i + 0.5) * bay
     const s = i % 2 ? 1 : -1
-    for (const z of [-h, h]) parts.push(box(t * 0.75, diag, t * 0.75, 0, y, z, 0, 0, s * lean))
-    for (const x of [-h, h]) parts.push(box(t * 0.75, diag, t * 0.75, x, y, 0, s * lean, 0, 0))
+    for (const z of [-h, h]) parts.push(place(tube(r * 0.55, diag, 5), 0, y, z, 0, 0, s * lean))
+    for (const x of [-h, h]) parts.push(place(tube(r * 0.55, diag, 5), x, y, 0, s * lean, 0, 0))
+    // traversele de la capatul segmentului
+    const y0 = i * bay
+    for (const z of [-h, h]) parts.push(place(tube(r * 0.5, size, 4), 0, y0, z, 0, 0, Math.PI / 2))
+    for (const x of [-h, h]) parts.push(place(tube(r * 0.5, size, 4), x, y0, 0, Math.PI / 2, 0, 0))
   }
   return merge(parts)
 }
