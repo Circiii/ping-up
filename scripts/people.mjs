@@ -203,6 +203,8 @@ const POSES = {
   high: { right: [0.08, 0.3, 0.16] },
   eye: { right: [0.1, -0.06, 0.22] },
   cheer: { right: [0.08, 0.3, 0.16], left: [-0.2, 0.62, 0.1] },
+  // acelasi brat ridicat, indoit: pumnul langa cap; scena trece intre cele doua pe ritm
+  pump: { right: [0.08, 0.3, 0.16], left: [-0.22, -0.02, 0.18] },
   walk: { right: [0.1, -0.12, 0.24] },
 }
 
@@ -464,7 +466,7 @@ function oct(x, y, z) {
 await MeshoptSimplifier.ready
 
 // pozele fiecaruia; unii mai ridica si cealalta mana, unul merge prin multime
-const EXTRA = { hoodie: ['cheer'], punk: ['cheer'], woman: ['cheer'], casual: ['walk'] }
+const EXTRA = { hoodie: ['cheer', 'pump'], punk: ['cheer', 'pump'], woman: ['cheer', 'pump'], casual: ['walk', 'cheer', 'pump'] }
 
 const chars = []
 for (const c of CHARACTERS) {

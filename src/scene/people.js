@@ -300,6 +300,8 @@ const modelVertex = (wakeSpeed) => /* glsl */ `
   attribute vec3 aColor;
   attribute float aRole;
   attribute vec2 aScreen;
+  attribute vec3 aPos2;
+  attribute vec3 aNrm2;
   uniform float uShow, uTime, uCrowd, uDim, uMesh, uReveal;
   uniform vec3 uWake;
   uniform vec2 uPin;
@@ -318,15 +320,20 @@ const modelVertex = (wakeSpeed) => /* glsl */ `
   varying float vPlain;
   ${BOUNCE}
   void main() {
+    // cine are bratul liber ridicat il strange si il intinde pe ritm, cat canta scena
+    float pump = 0.5 + 0.5 * sin(3.14159265 * (uBeat + aWho.x * 1.7));
+    float dance = smoothstep(0.2, 0.9, pump) * min(1.0, uBob * 1.4);
+    vec3 shape = mix(position, aPos2, dance);
+    vec3 nrm = normalize(mix(normal, aNrm2, dance));
     float s = aPos.y * uShow;
     float c = cos(aWho.z);
     float sn = sin(aWho.z);
-    vec3 p = position;
+    vec3 p = shape;
     // se leagana pe ritm, din solduri in sus
-    p.x += sin(uBeat * 3.14159265 + aWho.x * 6.2832) * 0.03 * aWho.y * uBob * position.y;
+    p.x += sin(uBeat * 3.14159265 + aWho.x * 6.2832) * 0.03 * aWho.y * uBob * shape.y;
     p *= s;
     vec3 world = vec3(aPos.x + c * p.x + sn * p.z, p.y + bounce(aWho.x, aWho.y, aPos.xz), aPos.z - sn * p.x + c * p.z);
-    vN = normalize(vec3(c * normal.x + sn * normal.z, normal.y, -sn * normal.x + c * normal.z));
+    vN = normalize(vec3(c * nrm.x + sn * nrm.z, nrm.y, -sn * nrm.x + c * nrm.z));
     vW = world;
     vPart = aRole;
     vSeed = aWho.x;
@@ -518,10 +525,13 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   }
 
   const mesh = new THREE.Group()
-  const make = (geometry, count) => {
+  // `morph`: a doua poza a aceluiasi om (aceleasi varfuri), spre care trece pe ritm; altfel, el insusi
+  const make = (geometry, count, morph = geometry) => {
     const geo = new THREE.InstancedBufferGeometry()
     geo.setIndex(geometry.index)
     for (const name of ['position', 'normal', 'aColor', 'aRole', 'aScreen']) geo.setAttribute(name, geometry.attributes[name])
+    geo.setAttribute('aPos2', morph.attributes.position)
+    geo.setAttribute('aNrm2', morph.attributes.normal)
     geo.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3).setUsage(THREE.DynamicDrawUsage))
     geo.setAttribute('aWho', new THREE.InstancedBufferAttribute(new Float32Array(count * 4), 4).setUsage(THREE.DynamicDrawUsage))
     geo.instanceCount = 0
@@ -530,7 +540,8 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
   // o plasa pentru fiecare personaj, poza si treapta; se aprind doar cele care au oameni
   const buckets = variants.map((v) =>
     v.char.lods.map((lod) => {
-      const geo = make(lod.poses[v.pose].geometry, v.people.length)
+      const morph = v.pose === 'cheer' && lod.poses.pump ? lod.poses.pump.geometry : undefined
+      const geo = make(lod.poses[v.pose].geometry, v.people.length, morph)
       const m = new THREE.Mesh(geo, material)
       m.frustumCulled = false
       m.visible = false

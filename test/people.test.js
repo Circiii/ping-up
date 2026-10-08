@@ -55,3 +55,22 @@ test('screen coordinates stay within the glass', () => {
     }
   }
 })
+
+test('dancers only move the free arm between the cheer and pump poses', () => {
+  const dancers = people.chars.filter((c) => c.poses.includes('cheer') && c.poses.includes('pump'))
+  assert.ok(dancers.length >= 3)
+  for (const c of dancers) {
+    const a = c.lods[0].poses.cheer.geometry.attributes.position
+    const b = c.lods[0].poses.pump.geometry.attributes.position
+    let moved = 0
+    let most = 0
+    for (let i = 0; i < a.count; i++) {
+      const d = Math.hypot(a.getX(i) - b.getX(i), a.getY(i) - b.getY(i), a.getZ(i) - b.getZ(i))
+      if (d > 0.02) moved++
+      most = Math.max(most, d)
+    }
+    // bratul se strange vizibil, iar restul corpului (si telefonul) ramane pe loc
+    assert.ok(most > 0.15, `${c.id}: bratul abia se misca (${most})`)
+    assert.ok(moved / a.count < 0.25, `${c.id}: se misca prea mult din corp (${moved}/${a.count})`)
+  }
+})
