@@ -1,19 +1,54 @@
-import { appendFileSync, existsSync, readFileSync, readdirSync } from 'node:fs'
+import { appendFileSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
+import { handle, latestRelease } from './lib/release.js'
 
-// Numele aplicatiei, versiunea si Android-ul minim stau doar in app.json.
+// Numele aplicatiei si Android-ul minim stau in app.json. Versiunea vine din ultimul release de pe GitHub;
+// pagina o reimprospateaza oricum la incarcare, aici e doar pentru cine o deschide fara JavaScript.
 const site = fileURLToPath(new URL('.', import.meta.url))
 const app = JSON.parse(readFileSync(resolve(site, 'app.json'), 'utf8'))
 
 const appName = app.name
-const version = app.version
 const minSdk = app.minSdk
 const androidNames = { 26: '8.0', 27: '8.1', 28: '9', 29: '10', 30: '11', 31: '12', 32: '12L', 33: '13', 34: '14', 35: '15', 36: '16' }
 const minAndroid = androidNames[minSdk] ?? String(minSdk)
 
-const tokens = { APP_NAME: appName, VERSION: version, MIN_ANDROID: minAndroid }
+async function releasedVersion() {
+  try {
+    return (await latestRelease({ token: process.env.GITHUB_TOKEN, timeout: 5000 }))?.version ?? app.version
+  } catch {
+    return app.version
+  }
+}
+
+/**
+ * In dev, /apk.json si /ping-up.apk raspund la fel ca functia de pe Vercel. Raspunsul GitHub sta 5 minute in
+ * memorie, ca reincarcarile paginii sa nu consume cele 60 de cereri pe ora.
+ */
+let github = null
+async function cachedFetch(url, init) {
+  if (!github || Date.now() - github.at > 300000) {
+    const res = await fetch(url, init)
+    github = { at: Date.now(), status: res.status, body: await res.text() }
+  }
+  return new Response(github.body, { status: github.status })
+}
+
+const releaseRoutes = {
+  name: 'release-routes',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      const path = req.url.split('?')[0]
+      if (!path.endsWith('/apk.json') && !path.endsWith('/ping-up.apk')) return next()
+      const url = new URL(path.endsWith('.apk') ? '/api/apk?download=1' : '/api/apk', 'http://localhost')
+      const out = await handle(new Request(url), { token: process.env.GITHUB_TOKEN, fetch: cachedFetch })
+      res.statusCode = out.status
+      out.headers.forEach((v, k) => res.setHeader(k, v))
+      res.end(Buffer.from(await out.arrayBuffer()))
+    })
+  },
+}
 
 // Aceleasi iconite ca in aplicatie: Phosphor 2.1.1, adunate intr-un sprite pus direct in pagina.
 const icons = {
@@ -64,13 +99,13 @@ const assetLicenses = {
   },
 }
 
-export default defineConfig(({ command }) => {
-  if (command === 'build' && !existsSync(resolve(site, 'public', 'ping-up.apk'))) {
-    console.warn('Lipseste public/ping-up.apk: butonul de descarcare nu va avea fisier. Ruleaza intai npm run apk.')
-  }
+export default defineConfig(async ({ command }) => {
+  const version = command === 'build' ? await releasedVersion() : app.version
+  const tokens = { APP_NAME: appName, VERSION: version, MIN_ANDROID: minAndroid }
   return {
     base: './',
     plugins: [
+      releaseRoutes,
       assetLicenses,
       {
         name: 'app-tokens',

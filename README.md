@@ -21,20 +21,26 @@ Pe telefon, în aceeași rețea: `npm run dev -- --host`.
 npm run build
 ```
 
-Ce iese în `dist/` e un site static. Pe Vercel, fiecare push pe `main` îl publică din nou.
-
-## APK nou
-
 ```bash
-npm run apk -- cale/catre/app-debug.apk
+npm test
 ```
 
-Copiază APK-ul în `public/ping-up.apk` și scrie în `public/apk.json` versiunea, mărimea și SHA-256-ul lui, pe care
-butonul de descărcare le afișează. Versiunea ajunge și în `app.json`. După commit și push, site-ul servește APK-ul nou.
+Ce iese în `dist/` e un site static, plus funcția din `api/`. Pe Vercel, fiecare push pe `main` îl publică din nou.
+
+## Versiune nouă a aplicației
+
+Nu se mai face nimic în site. APK-ul vine din ultimul release al aplicației
+([PingUp/releases](https://github.com/dulgherustefan/PingUp/releases)): `/ping-up.apk` trimite la fișierul lui,
+iar `/apk.json` dă versiunea, mărimea și SHA-256-ul. CDN-ul le ține 5 minute, deci un release nou apare pe site în
+cel mult 5 minute, fără deploy.
+
+Opțional, pe Vercel: `GITHUB_TOKEN` (un token fără drepturi) ridică limita de cereri către GitHub. Fără el,
+descărcarea merge oricum; doar mărimea și SHA-256-ul pot lipsi o vreme.
 
 ## Ce e unde
 
-- `app.json`: numele aplicației, versiunea și Android-ul minim (SDK).
+- `app.json`: numele aplicației, versiunea de rezervă (dacă GitHub nu răspunde la build) și Android-ul minim (SDK).
+- `api/apk.js`, `lib/release.js`: ultimul release de pe GitHub, pentru butonul de descărcare.
 - `src/data/venue.json`: harta festivalului, aceeași ca în aplicație.
 - `src/scene/`: scena 3D (Three.js): mulțimea și rețeaua, oamenii, scenele, construcțiile, pinul din logo, solul și harta.
 - `src/story.js`: ce se întâmplă în scenă la fiecare capitol, pe scroll.

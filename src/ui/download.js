@@ -49,12 +49,14 @@ export function setupDownload() {
     })
   }
 
+  // ultimul release al aplicatiei, ca pagina sa nu ramana la versiunea de la ultimul deploy
   fetch('apk.json', { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
     .then((info) => {
       if (!info) return
       document.querySelector('[data-apk-size]').textContent = `APK · ${mb(info.bytes)} MB`
-      document.querySelector('[data-apk-version]').textContent = info.version
+      for (const el of document.querySelectorAll('[data-apk-version]')) el.textContent = info.version
+      if (!info.sha256) return
       const hash = document.querySelector('[data-hash]')
       hash.querySelector('[data-hash-value]').textContent = info.sha256
       hash.hidden = false
