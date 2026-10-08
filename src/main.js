@@ -13,13 +13,25 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 // miscarea interfetei (butoane, bara de sus, intrebari, intrari in pagina) vine separat, dupa scena
 if (!reduce) import('./ui/motion.js').then((m) => m.setupMotion(), () => {})
 
-function webgl() {
+/** Numele placii video, daca browserul il spune; null fara WebGL 2. */
+function gpu() {
   try {
-    return !!document.createElement('canvas').getContext('webgl2')
+    const gl = document.createElement('canvas').getContext('webgl2')
+    if (!gl) return null
+    const info = gl.getExtension('WEBGL_debug_renderer_info')
+    const name = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+    gl.getExtension('WEBGL_lose_context')?.loseContext()
+    return String(name || '')
   } catch {
-    return false
+    return null
   }
 }
+const GPU = gpu()
+
+// Placile video slabe ale telefoanelor ieftine (Mali-G31/G5x, Adreno 5xx-61x, PowerVR) si cele integrate vechi ale
+// laptopurilor (Intel HD/UHD, fara Iris): pe ele scena porneste direct cu mai putini pixeli
+const WEAK_PHONE = /Mali-(4|T|G31|G5[0-9])|Adreno \(TM\) ([1-5]\d\d|6[01]\d)\b|PowerVR/i
+const OLD_LAPTOP = /Intel.*(HD|UHD) Graphics(?!.*Iris)/i
 
 /** Telefoanele modeste primesc mai putina lume, o rezolutie mai mica si scena fara stralucire. */
 function quality() {
@@ -27,8 +39,10 @@ function quality() {
   const narrow = Math.min(screen.width, screen.height) < 760
   const cores = navigator.hardwareConcurrency || 4
   const memory = navigator.deviceMemory || 4
-  const low = (coarse && narrow) || cores <= 4 || memory <= 3
-  return { low, dpr: Math.min(devicePixelRatio || 1, low ? 1.5 : 1.75), density: low ? 0.45 : 1 }
+  const weak = WEAK_PHONE.test(GPU)
+  const low = (coarse && narrow) || cores <= 4 || memory <= 3 || weak
+  const cap = weak || OLD_LAPTOP.test(GPU) ? 1 : low ? 1.5 : 1.75
+  return { low, dpr: Math.min(devicePixelRatio || 1, cap), density: weak ? 0.35 : low ? 0.45 : 1 }
 }
 
 async function start() {
@@ -140,5 +154,5 @@ function withoutScene() {
   document.documentElement.classList.add('no-scene')
 }
 
-if (webgl()) start().catch(withoutScene)
+if (GPU !== null) start().catch(withoutScene)
 else withoutScene()

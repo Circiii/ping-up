@@ -388,7 +388,9 @@ export function createStages(quality, time, models = null) {
   group.add(new THREE.Mesh(merge(lamps), blinderMat))
 
   // ceata luminata din jurul scenei
-  const haze = [[-11, 9, F + 3, 34], [10, 7, F + 1, 30], [0, 12, B + 3, 44], [-4, 5, F + 9, 26], [14, 13, F - 2, 30]].map(([x, y, z, size], i) => {
+  // pe telefoane doar doi nori, cei mari: fiecare strat de ceata se deseneaza peste tot ce e in spatele lui
+  const clouds = [[-11, 9, F + 3, 34], [10, 7, F + 1, 30], [0, 12, B + 3, 44], [-4, 5, F + 9, 26], [14, 13, F - 2, 30]]
+  const haze = (low ? clouds.slice(0, 3).filter((_, i) => i !== 1) : clouds).map(([x, y, z, size], i) => {
     const s = glow('#BFE9CC', size, 0)
     s.position.set(X + x, y, z)
     s.userData = { x: X + x, y, phase: i * 1.7, size }
