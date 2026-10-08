@@ -577,9 +577,16 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
     }
     if (near.length > FINE) near.sort((a, b) => a.lodD - b.lodD).length = FINE
     const fine = new Set(near)
+    let shadowN = 0
     variants.forEach((v, vi) => {
       for (const p of v.people) {
         if (p.lodD < 0) continue
+        // umbre doar unde se vede solul de aproape
+        if (p.lodD < MID * MID) {
+          shadowGeo.attributes.aPos.setXYZ(shadowN, p.x, p.y, p.z)
+          shadowGeo.attributes.aWho.setXYZW(shadowN, p.seed, p.energy, p.face, 0)
+          shadowN++
+        }
         const level = fine.has(p) ? 0 : p.lodD < MID * MID ? 1 : 2
         const b = buckets[vi][Math.min(level, buckets[vi].length - 1)]
         b.geo.attributes.aPos.setXYZ(b.n, p.x, p.y, p.z)
@@ -587,6 +594,13 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
         b.n++
       }
     })
+    shadowGeo.instanceCount = shadowN
+    if (shadowN) {
+      shadowGeo.attributes.aPos.addUpdateRange(0, shadowN * 3)
+      shadowGeo.attributes.aWho.addUpdateRange(0, shadowN * 4)
+      shadowGeo.attributes.aPos.needsUpdate = true
+      shadowGeo.attributes.aWho.needsUpdate = true
+    }
     for (const v of buckets) {
       for (const b of v) {
         b.geo.instanceCount = b.n
@@ -600,6 +614,46 @@ function createModelPeople(phones, shared, { wakeSpeed, models, low }) {
       }
     }
   }
+
+  // umbra moale de sub fiecare om: fara ea, oamenii par lipiti peste iarba
+  const shadowGeo = new THREE.InstancedBufferGeometry()
+  shadowGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1]), 3))
+  shadowGeo.setIndex([0, 2, 1, 0, 3, 2])
+  shadowGeo.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(list.length * 3), 3).setUsage(THREE.DynamicDrawUsage))
+  shadowGeo.setAttribute('aWho', new THREE.InstancedBufferAttribute(new Float32Array(list.length * 4), 4).setUsage(THREE.DynamicDrawUsage))
+  shadowGeo.instanceCount = 0
+  const shadows = new THREE.Mesh(shadowGeo, new THREE.ShaderMaterial({
+    uniforms: { uShow: uniforms.uShow, uBeat: shared.uBeat, uBob: shared.uBob, uStageXZ: shared.uStageXZ },
+    vertexShader: /* glsl */ `
+      attribute vec3 aPos;
+      attribute vec4 aWho;
+      uniform float uShow;
+      varying vec2 vQ;
+      varying float vK;
+      ${BOUNCE}
+      void main() {
+        // cand sare, umbra se strange si se deschide
+        float up = bounce(aWho.x, aWho.y, aPos.xz);
+        float r = aPos.y * 0.36 * uShow * (1.0 - up * 2.2);
+        vQ = position.xz;
+        vK = uShow * (1.0 - up * 3.0);
+        gl_Position = projectionMatrix * viewMatrix * vec4(aPos.x + position.x * r, 0.03, aPos.z + position.z * r * 0.8, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec2 vQ;
+      varying float vK;
+      void main() {
+        float a = exp(-dot(vQ, vQ) * 3.2) * 0.55 * vK;
+        gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+  }))
+  shadows.frustumCulled = false
+  shadows.renderOrder = 1
+  mesh.add(shadows)
 
   // trecatorul care duce raportul: merge prin multime cu telefonul in fata
   const walker = models.chars.find((c) => c.poses.includes('walk')) ?? models.chars[0]
