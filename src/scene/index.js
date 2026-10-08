@@ -307,7 +307,8 @@ export function createScene(canvas, quality, models = null) {
     size.w = w
     size.h = h
     size.dpr = renderer.getPixelRatio()
-    navH = nav ? nav.offsetHeight + 4 : 0
+    // bara pluteste sub marginea de sus: etichetele se ascund pana sub ea
+    navH = nav ? nav.getBoundingClientRect().bottom + 4 : 0
     renderer.setSize(w, h, false)
     camera.aspect = w / h
     camera.updateProjectionMatrix()

@@ -49,6 +49,8 @@
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-in: cubic-bezier(.4, 0, 1, 1);
   --gutter: clamp(16px, 5.5vw, 88px);
+  /* bara de sus pluteste la --nav-top de margine; --nav-h e tot spatiul pe care il ocupa, cu tot cu golul */
+  --nav-top: 10px;
   --nav-h: 64px;
 }
 
@@ -143,41 +145,55 @@ section:focus { outline: none; }
 .tag--poi svg { width: 13px; height: 13px; fill: #fff; }
 .tag--zone { background: none; box-shadow: none; padding: 0; text-shadow: 0 1px 8px rgb(0 0 0 / .8); }
 
-/* ---------- bara de sus: singura sticla din pagina, fiindca pe sub ea chiar trece continut ---------- */
+/* ---------- bara de sus: o insula de sticla, desprinsa de margini; singura sticla din pagina, fiindca pe sub ea chiar trece continut ---------- */
 
 .nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
-  height: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
-  padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
-  display: flex; align-items: center; gap: 24px;
+  position: fixed; left: 50%; z-index: 30;
+  top: calc(var(--nav-top) + env(safe-area-inset-top, 0px));
+  translate: -50% 0;
+  width: max-content; max-width: calc(100% - 24px);
+  height: calc(var(--nav-h) - var(--nav-top) - 2px);
+  padding: 0 6px 0 16px;
+  display: flex; align-items: center; gap: 6px;
+  border-radius: 999px;
+  background: rgb(16 20 17 / .5);
+  /* prefixul intai: minificatorul pastreaza doar ultima forma, iar Chrome o stie numai pe cea fara prefix */
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: inset 0 1px 0 rgb(244 246 240 / .08), 0 10px 30px -14px rgb(0 0 0 / .55);
   transition: background-color .3s var(--ease), box-shadow .3s var(--ease);
   view-transition-name: nav;
 }
 .nav.is-solid {
-  background: rgb(16 20 17 / .74);
-  /* prefixul intai: minificatorul pastreaza doar ultima forma, iar Chrome o stie numai pe cea fara prefix */
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
-  box-shadow: inset 0 -1px 0 rgb(211 216 178 / .1);
+  background: rgb(16 20 17 / .84);
+  box-shadow: inset 0 1px 0 rgb(244 246 240 / .09), 0 16px 40px -16px rgb(0 0 0 / .8);
 }
-.nav__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650; font-size: 1.0625rem; letter-spacing: -.02em; }
-.nav__brand img { width: 28px; height: 28px; border-radius: 7px; }
-.nav__links { display: flex; gap: 4px; margin-left: auto; }
+.nav__brand {
+  display: flex; align-items: center; gap: 10px;
+  margin-right: 6px; padding-right: 16px;
+  /* linia subtire dintre nume si linkuri */
+  box-shadow: inset -1px 0 0 rgb(244 246 240 / .12);
+  text-decoration: none; font-weight: 650; font-size: 1rem; letter-spacing: -.02em;
+}
+.nav__brand img { width: 28px; height: 28px; border-radius: 8px; }
+.nav__brand span { white-space: nowrap; }
+.nav__links { position: relative; isolation: isolate; display: flex; gap: 2px; }
 .nav__links a {
-  padding: 8px 12px; border-radius: 8px;
+  padding: 8px 14px; border-radius: 999px;
   text-decoration: none; font-size: .9375rem; font-weight: 500; color: var(--ink-2);
   transition: color .15s var(--ease);
 }
 .nav__links a:hover, .nav__links a[aria-current] { color: var(--ink); }
 /* pastila de sub linkul sectiunii in care esti; o muta src/ui/motion.js */
-.nav__links { position: relative; isolation: isolate; }
 .nav__pill {
   position: absolute; left: 0; top: 0; bottom: 0; width: 0; z-index: -1;
-  border-radius: 8px;
-  background: rgb(244 246 240 / .08);
-  box-shadow: inset 0 0 0 1px rgb(244 246 240 / .07);
+  border-radius: 999px;
+  background: rgb(244 246 240 / .1);
+  box-shadow: inset 0 1px 0 rgb(244 246 240 / .06);
   opacity: 0; pointer-events: none;
 }
+/* butonul de meniu apare doar pe ecrane inguste, si doar cu JavaScript (src/ui/menu.js il arata) */
+.nav__toggle { display: none; }
 
 /* ---------- butoane ---------- */
 
@@ -191,8 +207,16 @@ section:focus { outline: none; }
 }
 .btn:hover { background: #55DE78; }
 .btn:active { scale: .97; }
-.btn--small { margin-left: 8px; padding: 9px 16px 9px 13px; font-size: .9375rem; }
-.btn--small .i { width: 18px; height: 18px; }
+/* sageata sta in cercul ei, lipit de marginea butonului, si coboara un pic sub cursor */
+.btn__dot {
+  width: 32px; height: 32px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: rgb(11 14 12 / .14);
+  transition: translate .35s var(--ease-out), scale .35s var(--ease-out), background-color .2s var(--ease);
+}
+.btn__dot .i { width: 16px; height: 16px; }
+.btn:hover .btn__dot { translate: 0 1px; scale: 1.06; background: rgb(11 14 12 / .2); }
+.btn--small { margin-left: 8px; height: 40px; padding: 0 4px 0 16px; font-size: .9375rem; }
 .btn--big { padding: 17px 28px 17px 22px; font-size: 1.0625rem; position: relative; overflow: hidden; isolation: isolate; }
 .btn--big::after {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -805,15 +829,67 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 }
 
 @media (max-width: 900px) {
-  .nav__links { display: none; }
-  .btn--small { margin-left: auto; min-height: 44px; }
+  :root { --nav-top: 8px; }
+  /* insula ia toata latimea; peste scena 3D sticla costa mult pe telefoanele modeste, deci aici e plina */
+  .nav {
+    left: 10px; right: 10px; translate: none; width: auto; max-width: none;
+    padding: 0 5px 0 14px;
+    background: rgb(14 17 15 / .86);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .nav.is-solid, .nav.is-open { background: rgb(14 17 15 / .95); }
+  .nav__brand { margin-right: auto; padding-right: 0; box-shadow: none; }
+  .btn--small { margin-left: 0; height: 44px; }
+  .btn--small .btn__dot { width: 36px; height: 36px; }
+  .nav__toggle {
+    display: grid; place-content: center; gap: 6px;
+    width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+    background: rgb(244 246 240 / .08);
+    cursor: pointer;
+    transition: background-color .2s var(--ease);
+  }
+  .nav__toggle[hidden] { display: none; }
+  .nav__toggle span { width: 16px; height: 1.5px; border-radius: 1px; background: var(--ink); transition: translate .35s var(--ease-out), rotate .35s var(--ease-out); }
+  .nav.is-open .nav__toggle { background: rgb(244 246 240 / .14); }
+  /* cele doua linii se rotesc intr-un X */
+  .nav.is-open .nav__toggle span:first-child { translate: 0 3.75px; rotate: 45deg; }
+  .nav.is-open .nav__toggle span:last-child { translate: 0 -3.75px; rotate: -45deg; }
+  /* linkurile coboara intr-un card chiar sub insula; inchis, iese si din ordinea tastei Tab */
+  .nav__links {
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+    display: grid; gap: 2px; padding: 8px;
+    border-radius: 24px;
+    background: rgb(14 17 15 / .97);
+    box-shadow: inset 0 1px 0 rgb(244 246 240 / .07), 0 28px 50px -18px rgb(0 0 0 / .8);
+    transform-origin: 50% 0;
+    opacity: 0; translate: 0 -8px; scale: .98;
+    visibility: hidden; pointer-events: none;
+    transition: opacity .18s var(--ease-in), translate .18s var(--ease-in), scale .18s var(--ease-in), visibility 0s linear .18s;
+  }
+  .nav.is-open .nav__links {
+    opacity: 1; translate: 0 0; scale: 1;
+    visibility: visible; pointer-events: auto;
+    transition: opacity .3s var(--ease-out), translate .5s var(--ease-out), scale .5s var(--ease-out), visibility 0s;
+  }
+  .nav__links a { padding: 14px 16px; border-radius: 16px; font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; color: var(--ink); }
+  .nav__links a:active { background: rgb(244 246 240 / .07); }
+  .nav__pill { display: none; }
   .rail { display: none; }
-  /* peste scena 3D, sticla costa mult pe telefoanele modeste: aici bara e plina */
-  .nav.is-solid { background: rgb(14 17 15 / .94); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .dl__copy { padding: 9px 14px; }
   .faq { grid-template-columns: minmax(0, 1fr); }
   .faq h2 { position: static; }
   .rider, .faq { border-radius: 24px 24px 0 0; }
+}
+/* in meniul deschis linkurile urca unul dupa altul */
+@media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
+  .nav.is-open .nav__links a { animation: menu-in .5s var(--ease-out) both; }
+  .nav.is-open .nav__links a:nth-of-type(2) { animation-delay: .035s; }
+  .nav.is-open .nav__links a:nth-of-type(3) { animation-delay: .07s; }
+  .nav.is-open .nav__links a:nth-of-type(4) { animation-delay: .105s; }
+}
+@keyframes menu-in {
+  from { opacity: 0; translate: 0 12px; }
 }
 
 /* Telefonul tinut in picioare: textul sta jos, iar scena deasupra lui. Aceeasi conditie e si in story.js. */
@@ -850,6 +926,9 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 /* ecrane scunde, mai ales telefonul culcat: ramane asezarea lata, cu text mai mic si fara machete */
 @media (max-height: 560px) and (min-aspect-ratio: 1/1) {
   :root { --t-hero: clamp(2.25rem, 9svh, 3.5rem); --t-h2: clamp(1.5rem, 7svh, 2.25rem); --t-lead: 1rem; --nav-h: 52px; }
+  .btn--small, .nav__toggle { height: 34px; }
+  .nav__toggle { width: 34px; }
+  .btn--small .btn__dot { width: 28px; height: 28px; }
   .hero { min-height: 100svh; padding-bottom: 24px; }
   .hero__copy { gap: 14px; }
   .btn--big { padding: 12px 22px 12px 18px; }
@@ -868,8 +947,12 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
   .btn--dl small { flex-basis: 100%; padding-left: 32px; }
 }
 
+/* sub 350px, in bara de sus ramane doar logo-ul; numele e oricum in eticheta linkului */
+@media (max-width: 350px) {
+  .nav__brand span { display: none; }
+}
+
 @media (max-width: 640px) {
-  :root { --nav-h: 58px; }
   .hero { align-items: flex-end; padding-bottom: 40px; }
   .hero__copy { gap: 20px; }
   .rider__grid { grid-template-columns: minmax(0, 1fr); }

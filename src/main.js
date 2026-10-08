@@ -1,8 +1,10 @@
 import './style.css'
 import peopleUrl from './scene/people.dat?url'
 import { setupDownload } from './ui/download.js'
+import { setupMenu } from './ui/menu.js'
 
 setupDownload()
+setupMenu()
 
 const canvas = document.getElementById('scene')
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches

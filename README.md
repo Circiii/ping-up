@@ -48,6 +48,7 @@ descărcarea merge oricum; doar mărimea și SHA-256-ul pot lipsi o vreme.
 - `src/scene/people.dat`: oamenii din mulțime, personaje CC0 de la Quaternius puse cu telefonul ridicat, pe trei
   trepte de detaliu. Se refac cu `npm run people` (`scripts/people.mjs` descarcă modelele și le coace).
 - `src/nav.js`: saltul la o secțiune, din bara de sus.
+- `src/ui/menu.js`: meniul din bara de sus, pe ecranele înguste.
 - `src/ui/motion.js`: mișcarea interfeței cu Motion: butoanele mari, pastila din bara de sus, întrebările și intrările
   în pagină. Cu mișcarea redusă nu se încarcă.
 - Fontul Inter (SIL Open Font License), iconițele Phosphor (MIT) și oamenii Quaternius (CC0); licențele sunt în

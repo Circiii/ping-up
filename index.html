@@ -52,15 +52,16 @@
     <img src="favicon.svg" alt="" width="28" height="28">
     <span>{{APP_NAME}}</span>
   </a>
-  <nav class="nav__links" aria-label="Secțiuni">
+  <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Meniu" hidden><span></span><span></span></button>
+  <nav class="nav__links" id="nav-links" aria-label="Secțiuni">
     <a href="#cade">Cum merge</a>
     <a href="#sigilat">Siguranță</a>
     <a href="#rider">Rider tehnic</a>
     <a href="#intrebari">Întrebări</a>
   </nav>
   <a class="btn btn--small" href="#descarca">
-    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
     <span>Descarcă</span>
+    <span class="btn__dot"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></span>
   </a>
 </header>
 
