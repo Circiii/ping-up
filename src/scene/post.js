@@ -1,9 +1,11 @@
 // Dupa desenarea scenei: stralucire in jurul luminilor, apoi culoarea finala, cu vigneta si putin grauncior.
 import * as THREE from 'three'
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js'
-import { TexturePass } from 'three/addons/postprocessing/TexturePass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+
+/** Cand stralucirea e oprita, pasul final aduna negru. */
+const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1)
+black.needsUpdate = true
 
 /** Ultimul pas: tonurile si spatiul de culoare ale ecranului, colturile mai inchise, grauncior care ascunde benzile. */
 class FinishPass extends Pass {
@@ -11,6 +13,7 @@ class FinishPass extends Pass {
     super()
     this.uniforms = {
       tDiffuse: { value: null },
+      tBloom: { value: black },
       toneMappingExposure: { value: 1 },
       uTime: { value: 0 },
       uGrain: { value: 0.016 },
@@ -33,14 +36,15 @@ class FinishPass extends Pass {
       `,
       fragmentShader: /* glsl */ `
         precision highp float;
-        uniform sampler2D tDiffuse;
+        uniform sampler2D tDiffuse, tBloom;
         uniform float uTime, uGrain, uVignette;
         #include <tonemapping_pars_fragment>
         #include <colorspace_pars_fragment>
         varying vec2 vUv;
         float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         void main() {
-          vec3 c = texture2D(tDiffuse, vUv).rgb;
+          // stralucirea vine pe jumatate de rezolutie si se aduna aici, nu intr-o trecere a ei peste toata imaginea
+          vec3 c = texture2D(tDiffuse, vUv).rgb + texture2D(tBloom, vUv).rgb;
           vec2 q = (vUv - 0.5) * vec2(1.0, 0.86);
           c *= 1.0 - uVignette * smoothstep(0.32, 0.86, length(q));
           c = NeutralToneMapping(c);
@@ -150,20 +154,79 @@ class DofPass extends Pass {
   }
 }
 
+/**
+ * Stralucirea lui UnrealBloomPass, fara ultimul lui pas: in loc sa o adune peste imagine intr-o trecere separata, pe
+ * toata rezolutia, o lasa in textura pe jumatate de rezolutie, pe care o aduna pasul final, odata cu tonurile.
+ */
+class GlowPass extends UnrealBloomPass {
+  get texture() {
+    return this.renderTargetsHorizontal[0].texture
+  }
+
+  glow(renderer, input) {
+    renderer.getClearColor(this._oldClearColor)
+    this._oldClearAlpha = renderer.getClearAlpha()
+    const oldAutoClear = renderer.autoClear
+    renderer.autoClear = false
+    renderer.setClearColor(this.clearColor, 0)
+    const pass = (material, target) => {
+      this._fsQuad.material = material
+      renderer.setRenderTarget(target)
+      renderer.clear()
+      this._fsQuad.render(renderer)
+    }
+    // partile luminoase, apoi fiecare treapta inmuiata pe orizontala si pe verticala, apoi toate la un loc
+    this.highPassUniforms.tDiffuse.value = input
+    this.highPassUniforms.luminosityThreshold.value = this.threshold
+    pass(this.materialHighPassFilter, this.renderTargetBright)
+    let from = this.renderTargetBright
+    for (let i = 0; i < this.nMips; i++) {
+      const blur = this.separableBlurMaterials[i]
+      blur.uniforms.colorTexture.value = from.texture
+      blur.uniforms.direction.value = UnrealBloomPass.BlurDirectionX
+      pass(blur, this.renderTargetsHorizontal[i])
+      blur.uniforms.colorTexture.value = this.renderTargetsHorizontal[i].texture
+      blur.uniforms.direction.value = UnrealBloomPass.BlurDirectionY
+      pass(blur, this.renderTargetsVertical[i])
+      from = this.renderTargetsVertical[i]
+    }
+    this.compositeMaterial.uniforms.bloomStrength.value = this.strength
+    this.compositeMaterial.uniforms.bloomRadius.value = this.radius
+    this.compositeMaterial.uniforms.bloomTintColors.value = this.bloomTintColors
+    pass(this.compositeMaterial, this.renderTargetsHorizontal[0])
+    renderer.setClearColor(this._oldClearColor, this._oldClearAlpha)
+    renderer.autoClear = oldAutoClear
+  }
+}
+
 export function createPost(renderer, scene, camera, quality) {
-  // Scena se deseneaza netezita intr-o tinta a ei. Pasii de dupa lucreaza pe tinte simple: stralucirea scrie
-  // peste imaginea citita, iar o tinta netezita isi pierde continutul dupa ce a fost citita.
-  // adancimea cadrului ramane si ea, pentru adancimea de camp
+  // Scena se deseneaza netezita intr-o tinta a ei, cu tot cu adancime, pentru adancimea de camp. De acolo citesc
+  // direct ceilalti pasi: adancimea de camp (doar cand e nevoie) scrie intr-o tinta simpla, stralucirea se face pe
+  // jumatate de rezolutie, iar pasul final le aduna pe ecran. Fara copii intermediare pe toata rezolutia: pe placile
+  // video integrate, fiecare inseamna zeci de MB mutati prin memorie in fiecare cadru.
   const frame = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4, depthTexture: new THREE.DepthTexture(1, 1) })
-  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }))
-  composer.addPass(new TexturePass(frame.texture))
+  const sharp = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
   const dof = new DofPass(frame.depthTexture, camera)
   dof.enabled = false
-  composer.addPass(dof)
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.62, 0.72, 0.8)
-  composer.addPass(bloom)
+  const bloom = new GlowPass(new THREE.Vector2(1, 1), 0.62, 0.72, 0.8)
   const finish = new FinishPass()
-  composer.addPass(finish)
+  finish.renderToScreen = true
+  // pasii citesc imaginea dintr-un obiect cu `texture`, ca dintr-o tinta
+  const input = { texture: null }
+
+  function draw() {
+    let image = frame.texture
+    if (dof.enabled) {
+      input.texture = image
+      dof.render(renderer, sharp, input)
+      image = sharp.texture
+    }
+    if (bloom.enabled) bloom.glow(renderer, image)
+    finish.uniforms.tBloom.value = bloom.enabled ? bloom.texture : black
+    input.texture = image
+    finish.render(renderer, null, input)
+  }
+
   return {
     /** Tinta in care se deseneaza scena: shaderele ei se compileaza pentru ea (fara tonuri, cu culori liniare). */
     target: frame,
@@ -172,7 +235,7 @@ export function createPost(renderer, scene, camera, quality) {
       const d = dof.enabled
       const b = bloom.enabled
       dof.enabled = bloom.enabled = true
-      composer.render(0)
+      draw()
       dof.enabled = d
       bloom.enabled = b
     },
@@ -190,15 +253,18 @@ export function createPost(renderer, scene, camera, quality) {
       dof.enabled = !dof.off && strength > 0.02
     },
     resize(w, h, dpr) {
-      frame.setSize(Math.round(w * dpr), Math.round(h * dpr))
-      composer.setPixelRatio(dpr)
-      composer.setSize(w, h)
+      const W = Math.round(w * dpr)
+      const H = Math.round(h * dpr)
+      frame.setSize(W, H)
+      sharp.setSize(W, H)
+      dof.setSize(W, H)
+      bloom.setSize(W, H)
     },
-    render(t, dt) {
+    render(t) {
       finish.uniforms.uTime.value = t
       renderer.setRenderTarget(frame)
       renderer.render(scene, camera)
-      composer.render(dt)
+      draw()
     },
   }
 }
