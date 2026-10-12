@@ -56,6 +56,12 @@ function tint(geo, m) {
   return g
 }
 
+/**
+ * Lasa browserul sa raspunda intre doua bucati mari de constructie a scenei (atingeri, derulare, desen), ca
+ * pornirea sa nu fie o singura sarcina lunga, cu pagina inghetata pana la capat.
+ */
+export const pause = () => new Promise((resolve) => (globalThis.scheduler?.yield ? globalThis.scheduler.yield().then(resolve) : setTimeout(resolve, 0)))
+
 /** Textura desenata pe canvas; `repaint` o redeseneaza (de exemplu cand vine fontul). */
 export function canvasTexture(w, h, draw) {
   const c = document.createElement('canvas')
@@ -135,7 +141,15 @@ export class Batch {
  * Grinda cu zabrele, ca la scenele de concert: patru tevi lungi, diagonale in zigzag pe fiecare fata si traverse
  * la capatul fiecarui segment. Creste pe +Y de la 0 la `len`; `size` e latura sectiunii.
  */
+const trusses = new Map()
 export function truss(len, size = 1) {
+  // aceeasi grinda apare de mai multe ori (turnurile, aripile, cele doua parti ale scenei): se construieste o data
+  const key = `${len.toFixed(3)} ${size}`
+  if (!trusses.has(key)) trusses.set(key, buildTruss(len, size))
+  return trusses.get(key).clone()
+}
+
+function buildTruss(len, size) {
   const r = size * 0.05
   const h = size / 2
   const tube = (radius, length, sides) => new THREE.CylinderGeometry(radius, radius, length, sides, 1, true)

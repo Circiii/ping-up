@@ -2,6 +2,7 @@
 import * as THREE from 'three'
 import { createBackstage } from './backstage.js'
 import { rng } from './crowd.js'
+import { pause } from './kit.js'
 import { createProps } from './props.js'
 import { BPM, createStages } from './stage.js'
 import { createWheel } from './wheel.js'
@@ -149,14 +150,16 @@ function sky(time) {
   return { group, uniforms, starUniforms }
 }
 
-export function createSet(phones, quality, models = null) {
+export async function createSet(phones, quality, models = null) {
   const rand = rng(31)
   const group = new THREE.Group()
   const time = { value: 0 }
 
   const heaven = sky(time)
   const stages = createStages(quality, time, models)
+  await pause()
   const props = createProps(quality, rand, time)
+  await pause()
   const backstage = createBackstage(quality, time)
   const wheel = createWheel(quality, time)
   const cell = cellLinks(phones, props.tower.top, quality.low ? 90 : 170, time)

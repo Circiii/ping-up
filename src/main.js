@@ -59,7 +59,7 @@ async function start() {
   const thinNet = !!net && (/2g|3g/.test(net.effectiveType ?? '') || net.saveData)
   const early = await Promise.race([people, new Promise((r) => setTimeout(() => r(undefined), thinNet ? 0 : 800))])
   const q = quality()
-  const scene = createScene(canvas, q, early ?? null)
+  const scene = await createScene(canvas, q, early ?? null)
   if (early === undefined) people.then((m) => scene.upgradePeople(m)).catch(() => {})
   const story = createStory(scene, { reduce })
   // shaderele se compileaza acum, cat panza e inca ascunsa, nu in mijlocul derularii

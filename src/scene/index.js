@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { createCrowd, WAKE_SPEED } from './crowd.js'
 import { createGround, spotColor, zoneInk, zoneTone } from './ground.js'
-import { beam, glow, ribbons } from './kit.js'
+import { beam, glow, pause, ribbons } from './kit.js'
 import { bounceAt, createPeople } from './people.js'
 import { createPin } from './pin.js'
 import { createPost } from './post.js'
@@ -81,7 +81,11 @@ const GLYPHS = {
   medical: 'M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6Z',
 }
 
-export function createScene(canvas, quality, models = null) {
+/**
+ * Construieste scena in cateva bucati, cu pauze intre ele: pe un telefon mediu toata constructia ar fi o singura
+ * sarcina de o jumatate de secunda, in care pagina nu raspunde la nimic.
+ */
+export async function createScene(canvas, quality, models = null) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality.low, powerPreference: 'high-performance' })
   renderer.setPixelRatio(quality.dpr)
   renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -100,8 +104,11 @@ export function createScene(canvas, quality, models = null) {
 
   const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 2000)
 
+  await pause()
   const crowd = createCrowd({ density: quality.density })
-  const set = createSet(crowd.phones, quality, models)
+  await pause()
+  const set = await createSet(crowd.phones, quality, models)
+  await pause()
   // scena nu asteapta fontul mai mult de o secunda; cand vine, ecranele se rescriu cu el
   if (document.fonts && !document.fonts.check('800 16px Inter')) {
     document.fonts.load('800 16px Inter').then(() => set.redrawText(), () => {})
@@ -146,6 +153,7 @@ export function createScene(canvas, quality, models = null) {
   }
   // oamenii pot veni si dupa ce scena a pornit (vezi upgradePeople): pana atunci, siluetele simple
   let people = makePeople(models)
+  await pause()
   let thinned = 1
   scene.add(ground.mesh, set.group, people.mesh, people.solo, crowd.group)
 
@@ -522,7 +530,12 @@ export function createScene(canvas, quality, models = null) {
       const ready = renderer.compileAsync(scene, camera)
       renderer.setRenderTarget(null)
       if (!full) for (const o of hidden) o.visible = false
-      for (const t of textures) renderer.initTexture(t)
+      // texturile urca in cateva bucati, cu pauze intre ele, ca pagina sa raspunda si cat timp se incarca scena
+      let n = 0
+      for (const t of textures) {
+        if (n++ % 6 === 0) await pause()
+        renderer.initTexture(t)
+      }
       await Promise.race([ready, new Promise((r) => setTimeout(r, 2000))])
       if (full) {
         // panza si tintele au inca marimea de la pornire, de cativa pixeli: cadrul acesta costa doar varfurile
