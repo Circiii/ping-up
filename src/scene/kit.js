@@ -7,6 +7,55 @@ export const matte = (hex, rough = 0.92) => new THREE.MeshStandardMaterial({ col
 /** Suprafata care lumineaza singura: peste 1 intra in stralucirea din post-procesare. */
 export const lit = (hex, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(k), toneMapped: false })
 
+/**
+ * Familiile de materiale simple (o culoare, opace, fara texturi, pe o fata): toate piesele unei familii merg intr-o
+ * singura plasa, cu culoarea si asprimea pe varfuri. Arata la fel, dar placa video primeste un singur desen pe
+ * familie in loc de unul pe fiecare culoare.
+ */
+const families = new Map()
+function familyOf(m) {
+  if (m.map || m.transparent || m.opacity < 1 || m.side !== THREE.FrontSide || m.vertexColors || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return null
+  let key
+  if (m.isMeshBasicMaterial) {
+    if (m.alphaMap || m.envMap || m.lightMap || m.aoMap) return null
+    key = `basic ${m.toneMapped}`
+  } else if (m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial) {
+    if (m.emissive.getHex() || m.emissiveMap || m.roughnessMap || m.metalnessMap || m.normalMap || m.bumpMap || m.aoMap || m.envMap || m.flatShading) return null
+    key = `standard ${m.metalness} ${m.envMapIntensity}`
+  } else return null
+  if (!families.has(key)) families.set(key, family(m))
+  return families.get(key)
+}
+function family(m) {
+  if (m.isMeshBasicMaterial) return new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: m.toneMapped })
+  const f = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: m.metalness, envMapIntensity: m.envMapIntensity })
+  // asprimea vine de pe varfuri, ca fiecare piesa sa luceasca la fel ca inainte
+  f.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aRough;\nvarying float vRough;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvRough = aRough;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vRough;')
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vRough;')
+  }
+  f.customProgramCacheKey = () => 'family-rough'
+  return f
+}
+/** Pune pe varfuri culoarea (spatiul liniar al scenei, ca uniforma materialului) si asprimea piesei. */
+function tint(geo, m) {
+  const g = geo.attributes.color || geo.attributes.aRough ? geo.clone() : geo
+  const n = g.attributes.position.count
+  const col = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) {
+    col[i * 3] = m.color.r
+    col[i * 3 + 1] = m.color.g
+    col[i * 3 + 2] = m.color.b
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  if (m.isMeshStandardMaterial) g.setAttribute('aRough', new THREE.BufferAttribute(new Float32Array(n).fill(m.roughness), 1))
+  return g
+}
+
 /** Textura desenata pe canvas; `repaint` o redeseneaza (de exemplu cand vine fontul). */
 export function canvasTexture(w, h, draw) {
   const c = document.createElement('canvas')
@@ -60,7 +109,24 @@ export class Batch {
     return this
   }
   build(group = new THREE.Group()) {
-    for (const [material, geos] of this.parts) group.add(new THREE.Mesh(merge(geos), material))
+    // piesele materialelor simple se strang pe familii; o plasa pentru fiecare familie si forma de date
+    const folded = new Map()
+    for (const [material, geos] of this.parts) {
+      const fam = familyOf(material)
+      if (!fam) {
+        group.add(new THREE.Mesh(merge(geos), material))
+        continue
+      }
+      for (const geo of geos) {
+        const g = tint(geo, material)
+        const key = `${Object.keys(g.attributes).sort().join()} ${g.index ? 'i' : 'n'}`
+        if (!folded.has(fam)) folded.set(fam, new Map())
+        const byKey = folded.get(fam)
+        if (!byKey.has(key)) byKey.set(key, [])
+        byKey.get(key).push(g)
+      }
+    }
+    for (const [fam, byKey] of folded) for (const geos of byKey.values()) group.add(new THREE.Mesh(merge(geos), fam))
     return group
   }
 }
