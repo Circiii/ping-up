@@ -181,7 +181,8 @@ export async function createScene(canvas, quality, models = null) {
   key.target = pin.root
   const bounce = new THREE.PointLight('#30D158', 18, 14, 2)
   bounce.position.set(you.x + 1.5, 1.2, you.z + 3)
-  scene.add(hemi, rim, key, bounce)
+  scene.add(hemi, rim, key)
+  if (!quality.low) scene.add(bounce)
 
   const time = { value: 0 }
   const cone = beam(27, 0.35, 4.4, '#EEF3EA', time)

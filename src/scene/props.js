@@ -496,7 +496,8 @@ export function createProps(quality, rand, time) {
     tentAt(place(new THREE.PlaneGeometry(1.58, 1.58), mastX, 5.6, mastZ + 0.085)))
   const tentLamp = new THREE.PointLight('#F3F5EC', 30, 12, 1.8)
   tentLamp.position.set(T.x - 0.3, 3.2, T.z)
-  group.add(tentLamp)
+  // lampa cortului lumineaza doar de aproape; pe placile modeste ramane stralucirea ei
+  if (!quality.low) group.add(tentLamp)
   const tentGlow = glow('#F3F5EC', 7, 0.12)
   tentGlow.position.set(T.x - 0.5, 2.4, T.z - 0.3)
   group.add(tentGlow)

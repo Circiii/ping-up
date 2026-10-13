@@ -408,7 +408,10 @@ export function createStages(quality, time, models = null) {
   wash.position.set(X, 13.5, F - 2.4)
   const back = new THREE.PointLight('#30D158', 0, 28, 1.8)
   back.position.set(X, 5, B + 3)
-  group.add(wash, back)
+  // pe placile modeste ramane doar lumina mare a scenei: fiecare lumina in plus se calculeaza in fiecare pixel al
+  // decorului, iar cele mici abia se vad
+  group.add(wash)
+  if (!low) group.add(back)
 
   // ---------- scena 2: mai mica, cu fata spre vest ----------
   const x2 = STAGE2.x
@@ -451,7 +454,7 @@ export function createStages(quality, time, models = null) {
   group.add(lens2.points)
   const wash2 = new THREE.PointLight('#D3D8B2', 0, 30, 1.8)
   wash2.position.set(x2 - 1, 8, z2)
-  group.add(wash2)
+  if (!low) group.add(wash2)
 
   batch.build(group)
 
