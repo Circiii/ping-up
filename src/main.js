@@ -118,10 +118,11 @@ async function start() {
   draw(0)
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('story-snap')))
 
-  // Daca placa video nu tine pasul, calitatea scade in trepte, in orice capitol: intai pixelii (cate un sfert),
-  // apoi stralucirea, apoi multimea rarita la jumatate. Ritmul de baza e cel mai rapid pe care il prinde ecranul,
-  // dar nu sub 60 de cadre: un cadru e intarziat cand trece de o data si jumatate peste el. Economia de baterie
-  // tine unele telefoane la 30 de cadre oricat de buna e placa; acolo baza ramane 30 si calitatea nu scade degeaba.
+  // Daca placa video nu tine pasul, calitatea scade in trepte, in orice capitol: intai adancimea de camp, apoi
+  // pixelii (cate un sfert), apoi stralucirea, apoi multimea rarita la jumatate. Ritmul de baza e cel mai rapid pe
+  // care il prinde ecranul, dar nu sub 60 de cadre: un cadru e intarziat cand trece de o data si jumatate peste el.
+  // Economia de baterie tine unele telefoane la 30 de cadre oricat de buna e placa; acolo baza ramane 30 si
+  // calitatea nu scade degeaba.
   const gaps = []
   let base = 0
   let seen = 0
@@ -145,7 +146,8 @@ async function start() {
     if (++seen < 120) return
     if (late > 30) {
       const dpr = scene.renderer.getPixelRatio()
-      if (dpr > 1) {
+      if (scene.hasDof) scene.dropDof()
+      else if (dpr > 1) {
         scene.renderer.setPixelRatio(Math.max(1, dpr - 0.25))
         fit()
       } else if (scene.hasBloom) scene.dropBloom()

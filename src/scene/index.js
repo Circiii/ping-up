@@ -309,7 +309,7 @@ export async function createScene(canvas, quality, models = null) {
   }
 
   // ---- stralucirea si culoarea finala; fara ele pe telefoanele modeste ----
-  const post = quality.low ? null : createPost(renderer, scene, camera, quality)
+  const post = quality.low ? null : createPost(renderer, scene, camera)
 
   const size = { w: 1, h: 1, dpr: 0 }
   const nav = document.querySelector('.nav')
@@ -547,7 +547,11 @@ export async function createScene(canvas, quality, models = null) {
         for (const o of culled) o.frustumCulled = true
       }
     },
-    /** Trepte de rezerva cand placa video nu tine pasul: fara stralucire, apoi cu multimea rarita. */
+    /** Trepte de rezerva cand placa video nu tine pasul: fara adancime de camp, fara stralucire, multimea rarita. */
+    get hasDof() { return !!post?.dof },
+    dropDof() {
+      post?.dropDof()
+    },
     get hasBloom() { return !!post?.bloom },
     dropBloom() {
       post?.dropBloom()
