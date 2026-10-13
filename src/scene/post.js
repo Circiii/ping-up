@@ -269,8 +269,9 @@ export function createPost(renderer, scene, camera) {
       dof.enabled = d
       bloom.enabled = b
     },
-    get dof() { return !dof.off },
-    /** Prima treapta cand placa nu tine pasul: prim-planurile raman clare peste tot. */
+    /** Daca adancimea de camp lucreaza acum: doar atunci are rost sa fie prima treapta lasata deoparte. */
+    get dof() { return dof.enabled },
+    /** Prima treapta cand placa nu tine pasul de aproape: prim-planurile raman clare peste tot. */
     dropDof() {
       dof.off = true
     },

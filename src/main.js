@@ -126,12 +126,13 @@ async function start() {
   // pixelii (cate un sfert), apoi stralucirea, apoi multimea rarita la jumatate. Ritmul de baza e cel mai rapid pe
   // care il prinde ecranul, dar nu sub 60 de cadre: un cadru e intarziat cand trece de o data si jumatate peste el.
   // Economia de baterie tine unele telefoane la 30 de cadre oricat de buna e placa; acolo baza ramane 30 si
-  // calitatea nu scade degeaba.
+  // calitatea nu scade degeaba. Ferestrele sunt scurte (o secunda la 60 de cadre): o placa slaba ajunge in cateva
+  // secunde la treapta pe care o duce, nu dupa o jumatate de minut de sacadari.
   const gaps = []
   let base = 0
   let seen = 0
   let late = 0
-  let settle = 40
+  let settle = 20
   let done = false
   function adapt(gap) {
     if (done) return
@@ -141,14 +142,14 @@ async function start() {
     }
     if (!base) {
       gaps.push(gap)
-      if (gaps.length < 90) return
+      if (gaps.length < 45) return
       gaps.sort((a, b) => a - b)
-      base = Math.max(1000 / 60, gaps[9])
+      base = Math.max(1000 / 60, gaps[4])
       return
     }
     if (gap > base * 1.5) late++
-    if (++seen < 120) return
-    if (late > 30) {
+    if (++seen < 60) return
+    if (late > 15) {
       const dpr = scene.renderer.getPixelRatio()
       if (scene.hasDof) scene.dropDof()
       else if (dpr > 1) {
@@ -160,7 +161,7 @@ async function start() {
         done = true
       }
       // cadrele de imediat dupa (panza realocata) nu se pun la socoteala
-      settle = 30
+      settle = 15
     }
     seen = 0
     late = 0
