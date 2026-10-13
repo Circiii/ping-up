@@ -33,15 +33,19 @@ const GPU = gpu()
 const WEAK_PHONE = /Mali-(4|T|G31|G5[0-9])|Adreno \(TM\) ([1-5]\d\d|6[01]\d)\b|PowerVR/i
 const OLD_LAPTOP = /Intel.*(HD|UHD) Graphics(?!.*Iris)/i
 
-/** Telefoanele modeste primesc mai putina lume, o rezolutie mai mica si scena fara stralucire. */
+/**
+ * Telefoanele si laptopurile modeste primesc mai putina lume, o rezolutie mai mica si scena fara stralucire. Pe
+ * ecranele dense rezolutia scenei se opreste la 1,5: imaginea e netezita oricum, iar pixelii in plus costau aproape
+ * un sfert din cadru fara sa se vada.
+ */
 function quality() {
   const coarse = matchMedia('(pointer: coarse)').matches
   const narrow = Math.min(screen.width, screen.height) < 760
   const cores = navigator.hardwareConcurrency || 4
   const memory = navigator.deviceMemory || 4
-  const weak = WEAK_PHONE.test(GPU)
+  const weak = WEAK_PHONE.test(GPU) || OLD_LAPTOP.test(GPU)
   const low = (coarse && narrow) || cores <= 4 || memory <= 3 || weak
-  const cap = weak || OLD_LAPTOP.test(GPU) ? 1 : low ? 1.5 : 1.75
+  const cap = weak ? 1 : 1.5
   return { low, dpr: Math.min(devicePixelRatio || 1, cap), density: weak ? 0.35 : low ? 0.45 : 1 }
 }
 
@@ -170,16 +174,29 @@ async function start() {
   let held = 0
   let lastScroll = scrollY
 
+  // Pe ecranele de 120-240 Hz scena se deseneaza tot de vreo 60 de ori pe secunda (din doua, trei sau patru
+  // imagini ale ecranului, una): miscarea camerei e lina oricum, iar placa video nu mai lucreaza de patru ori mai
+  // mult, cu cadre pierdute din cand in cand. `tick` e intervalul ecranului, cel mai scurt vazut de curand; cu
+  // jumatate din el (si o marja de o milisecunda) ecranele de 60-90 Hz deseneaza fiecare imagine.
+  const FRAME = 1000 / 60
+  let tick = FRAME
+  let since = 0
+
   function frame(now) {
     requestAnimationFrame(frame)
     const gap = now - last
-    const dt = Math.min(0.05, gap / 1000)
     last = now
+    tick = Math.min(gap, tick * 1.02)
+    since += gap
+    if (since + tick / 2 < FRAME - 1) return
+    const elapsed = since
+    since = 0
+    const dt = Math.min(0.05, elapsed / 1000)
     if (document.hidden) return
     if (!reduce) t += dt
     y = reduce ? scrollY : y + (scrollY - y) * (1 - Math.exp(-dt * 9))
     if (Math.abs(scrollY - y) < 0.5) y = scrollY
-    still = scrollY === lastScroll && y === scrollY ? still + gap : 0
+    still = scrollY === lastScroll && y === scrollY ? still + elapsed : 0
     lastScroll = scrollY
     const idle = still > 2500
     if (idle && ++skipped % rest) {
@@ -188,7 +205,7 @@ async function start() {
     }
     draw(dt + held)
     held = 0
-    if (!idle && story.sceneVisible(y)) adapt(gap)
+    if (!idle && story.sceneVisible(y)) adapt(elapsed)
   }
   requestAnimationFrame((now) => {
     last = now
