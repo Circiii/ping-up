@@ -97,10 +97,14 @@ export async function createScene(canvas, quality, models = null) {
 
   const scene = new THREE.Scene()
   scene.fog = new THREE.FogExp2('#0E110F', 0.0042)
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  // reflexiile se deseneaza pe placa video: cand browserul pierde contextul se pierd si ele, deci se refac (restore)
+  const environment = () => {
+    const pmrem = new THREE.PMREMGenerator(renderer)
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    pmrem.dispose()
+  }
+  environment()
   scene.environmentIntensity = 0.5
-  pmrem.dispose()
 
   const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 2000)
 
@@ -547,6 +551,14 @@ export async function createScene(canvas, quality, models = null) {
         for (const o of hidden) o.visible = false
         for (const o of culled) o.frustumCulled = true
       }
+    },
+    /**
+     * Dupa ce browserul reda contextul WebGL pierdut: three.js urca din nou geometriile si texturile cand le
+     * foloseste, dar reflexiile (desenate pe placa) trebuie refacute; apoi shaderele, ca la pornire.
+     */
+    async restore() {
+      environment()
+      await this.warm()
     },
     /** Trepte de rezerva cand placa video nu tine pasul: fara adancime de camp, fara stralucire, multimea rarita. */
     get hasDof() { return !!post?.dof },

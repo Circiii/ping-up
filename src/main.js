@@ -105,7 +105,45 @@ async function start() {
 
   function draw(dt) {
     const state = story.sample(y, t, scrollY)
-    if (story.sceneVisible(y)) scene.render(t, dt, state)
+    if (story.sceneVisible(y) && !lost) scene.render(t, dt, state)
+  }
+
+  // Browserul poate pierde contextul WebGL: telefonul cand iesi din browser si revii sau cand ramane fara memorie,
+  // laptopul cand placa video se reseteaza. Panza ar ramane neagra sub text. O ascundem, iar povestea merge mai
+  // departe; cand browserul reda contextul, scena se reface si reapare. Daca nu-l reda in cateva secunde cu pagina
+  // in fata (iOS de multe ori nu o face), o reincarcare aduce scena inapoi, cel mult o data pe minut, ca sa nu
+  // intre in bucla; altfel ramane pagina fara scena.
+  let lost = ''
+  let lostSince = 0
+  canvas.addEventListener('webglcontextlost', () => {
+    lost = 'lost'
+    lostSince = performance.now()
+    canvas.classList.remove('is-ready')
+  })
+  canvas.addEventListener('webglcontextrestored', () => {
+    lost = 'restoring'
+    scene.restore().catch(() => {}).then(() => {
+      lost = ''
+      settle = 30
+      draw(0)
+      canvas.classList.add('is-ready')
+    })
+  })
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) lostSince = performance.now()
+  })
+  function giveUp() {
+    lost = 'gone'
+    let again = false
+    try {
+      const at = Number(sessionStorage.getItem('scene-reload')) || 0
+      if (Date.now() - at > 60000) {
+        sessionStorage.setItem('scene-reload', String(Date.now()))
+        again = true
+      }
+    } catch {}
+    if (again) location.reload()
+    else withoutScene()
   }
 
   setupJumps({
@@ -184,7 +222,9 @@ async function start() {
   let since = 0
 
   function frame(now) {
+    if (lost === 'gone') return
     requestAnimationFrame(frame)
+    if (lost === 'lost' && !document.hidden && now - lostSince > 4000) giveUp()
     const gap = now - last
     last = now
     tick = Math.min(gap, tick * 1.02)
@@ -206,7 +246,7 @@ async function start() {
     }
     draw(dt + held)
     held = 0
-    if (!idle && story.sceneVisible(y)) adapt(elapsed)
+    if (!idle && !lost && story.sceneVisible(y)) adapt(elapsed)
   }
   requestAnimationFrame((now) => {
     last = now
