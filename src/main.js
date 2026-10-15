@@ -227,7 +227,8 @@ async function start() {
     if (lost === 'lost' && !document.hidden && now - lostSince > 4000) giveUp()
     const gap = now - last
     last = now
-    tick = Math.min(gap, tick * 1.02)
+    // primul apel vine cu acelasi moment ca pornirea (interval 0): nu e un interval al ecranului
+    if (gap > 0) tick = Math.min(gap, tick * 1.02)
     since += gap
     if (since + tick / 2 < FRAME - 1) return
     const elapsed = since
