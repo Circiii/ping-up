@@ -1207,6 +1207,12 @@ html.story-on .is-in .packet { opacity: 1; scale: 1; transition: opacity .5s var
 html:not(.story-on) .scrim { display: none; }
 html.no-scene .chapter { height: auto; }
 html.no-scene .chapter__stage { position: relative; height: auto; min-height: 100svh; }
+/* prima pagina nu ramane pe negru: un cadru din scena, descarcat doar cand scena nu poate rula */
+html.no-scene .hero { background: url(/scena.webp) 68% 50% / cover no-repeat; }
+/* pe telefon textul ocupa jumatatea de jos: cadrul sta deasupra lui si se stinge spre el */
+@media (max-width: 900px) and (max-aspect-ratio: 1/1) {
+  html.no-scene .hero { background: linear-gradient(180deg, rgb(14 17 15 / 0) 30%, rgb(14 17 15) 58%), url(/scena.webp) 72% 0 / auto 60% no-repeat; }
+}
 
 /* telefoane scunde tinute in picioare: textul se strange, ca scena sa pastreze macar o treime din ecran */
 @media (max-width: 900px) and (max-aspect-ratio: 1/1) and (max-height: 720px) {
