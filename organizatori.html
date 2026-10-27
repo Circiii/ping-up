@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pentru organizatori · {{APP_NAME}}</title>
+  <meta name="description" content="Rapoarte de incident care nu depind de rețeaua mobilă: din telefon în telefon, până la staff. Pilot gratuit în vara lui 2027.">
+  <meta name="theme-color" content="#0E110F">
+  <link rel="canonical" href="https://ping-up.org/organizatori.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="/src/legal.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">
+    <img src="favicon.svg" alt="" width="28" height="28">
+    <span>{{APP_NAME}}</span>
+  </a>
+</header>
+
+<main class="doc">
+  <h1>Rapoarte de incident care nu depind de rețeaua mobilă</h1>
+  <p class="lead">Când zeci de mii de telefoane sunt în același loc, rețeaua mobilă se aglomerează exact când e nevoie
+    de ea. {{APP_NAME}} duce rapoartele de incident din telefon în telefon, prin Bluetooth, până la staff și la camera
+    de control. Căutăm un festival pentru un pilot gratuit în vara lui 2027.</p>
+  <p class="actions">
+    <a class="cta" href="mailto:stdulgh@gmail.com?subject=Pilot%20Ping%20Up%202027">Scrieți-ne pentru pilot</a>
+    <a href="#pilot">Ce presupune pilotul</a>
+  </p>
+
+  <h2>Ce primește staff-ul</h2>
+  <dl>
+    <div><dt>Rapoarte</dt><dd>Participantul alege categoria și trimite, în două atingeri. Zona și poziția vin din GPS,
+      dacă a dat voie; altfel își alege zona din listă. Raportul e criptat: telefoanele de pe drum îl duc mai departe,
+      dar îl deschid doar consola și șefii de echipă.</dd></div>
+    <div><dt>Alerte pe telefoanele de staff</dt><dd>Staff-ul preia incidentul, ajunge la fața locului și îl închide, iar
+      cel care a raportat vede fiecare pas.</dd></div>
+    <div><dt>Camera de control</dt><dd>Consola arată incidentele și starea zonelor, trimite anunțuri semnate și pornește
+      evacuarea pe zone, cu drumul spre ieșire pe harta fiecărui telefon.</dd></div>
+    <div><dt>Coduri pe tură</dt><dd>Fiecare echipă intră cu un cod QR valabil doar în tura ei. Codul unui telefon pierdut
+      se revocă de pe laptopul organizatorului, iar consola trimite revocarea tuturor telefoanelor.</dd></div>
+    <div><dt>Ancore</dt><dd>Telefoane la priză în puncte fixe (info, cortul medical, porțile campingului) duc rapoartele
+      mai departe unde sunt puțini oameni.</dd></div>
+  </dl>
+
+  <h2>Cum merge fără internet</h2>
+  <ol>
+    <li>Fiecare telefon cu aplicația duce mai departe ce primește de la cei din jur.</li>
+    <li>Raportul sare din telefon în telefon până la primul telefon de staff. Dacă nu are pe unde, așteaptă și
+      pleacă singur când apare cineva în rază.</li>
+    <li>Confirmarea staff-ului se întoarce tot din telefon în telefon, la cel care a raportat.</li>
+  </ol>
+  <p>Nu folosește server, conturi sau internet. {{APP_NAME}} nu înlocuiește stațiile radio, linia de siguranță sau 112:
+    e drumul offline către același staff, care decide în continuare pe cine mai cheamă.</p>
+
+  <h2 id="pilot">Pilotul din 2027</h2>
+  <ul>
+    <li><b>Gratuit și restrâns:</b> aplicația o folosesc staff-ul și echipa Safe Zone, pe telefoane Android pregătite
+      împreună cu voi. Publicul o poate instala, dar pilotul nu se bazează pe el.</li>
+    <li><b>Măsurat:</b> cât durează un raport până la staff, câte rapoarte ajung, cât consumă bateria, câte incidente se
+      tratează.</li>
+    <li><b>De la voi ne trebuie:</b> harta cu zonele și ieșirile, echipele pe ture, o persoană de contact și trei
+      exerciții înainte de festival.</li>
+    <li><b>În schimb vă cerem:</b> o referință scrisă și acordul de a publica raportul cu cifre, fără date
+      personale.</li>
+  </ul>
+
+  <h2>Calendarul</h2>
+  <dl>
+    <div><dt>Până la 31 ianuarie</dt><dd>Discuții și demo pe telefoanele voastre.</dd></div>
+    <div><dt>15 martie</dt><dd>Acordul semnat, pentru un festival din iulie.</dd></div>
+    <div><dt>13 aprilie</dt><dd>Acordul semnat, pentru un festival din august.</dd></div>
+    <div><dt>Aprilie–mai</dt><dd>Harta, programul și fișele de prim ajutor, în pachetul semnat al festivalului; codurile
+      QR ale echipelor, pe zile.</dd></div>
+    <div><dt>Cu o lună înainte</dt><dd>Instruirea și cele trei exerciții: la masă, o probă pe teren și un test de
+      stres.</dd></div>
+    <div><dt>După festival</dt><dd>Raportul public, cu cifrele măsurate.</dd></div>
+  </dl>
+
+  <h2>Unde suntem acum</h2>
+  <ul>
+    <li>Protocolul e public, cu vectori de test. Rețeaua a mers în simulare cu 200 de telefoane, fără interferențe
+      radio; urmează măsurătorile pe telefoane reale, pe care le publicăm.</li>
+    <li>Aplicația de iPhone există, dar rețeaua dintre iPhone-uri n-a fost testată, iar iPhone-urile blocate se găsesc
+      greu între ele. De aceea pilotul se face pe Android.</li>
+    <li>Rapoartele se pot citi doar pe telefoanele echipei voastre; nouă nu ne ajunge nimic. Cheile care le deschid se
+      fac pe laptopul organizatorului. Înainte de pilot facem împreună evaluarea de impact asupra protecției
+      datelor.</li>
+    <li>Codul e deschis, sub GPL-3.0-or-later, pe
+      <a href="https://github.com/dulgherustefan/PingUp">GitHub</a>. Îl poate verifica oricine.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>{{APP_NAME}} e făcut de patru elevi: <span class="name">Dulgheru Ștefan Alexandru</span>, <span class="name">Cîrciumaru Radu</span>,
+    <span class="name">Ilie-Goga Radu</span> și <span class="name">Farkaș Andrei-Oliver</span>. Scrieți-ne la
+    <a href="mailto:stdulgh@gmail.com?subject=Pilot%20Ping%20Up%202027">stdulgh@gmail.com</a> până la 31 ianuarie, ca
+    să avem timp pentru exerciții.</p>
+</main>
+</body>
+</html>

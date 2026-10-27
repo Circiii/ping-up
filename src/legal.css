@@ -52,11 +52,27 @@ a:hover { color: var(--green); }
 .doc p, .doc li, .doc dd { color: var(--ink-2); }
 .doc p { margin: 0 0 12px; }
 .lead { font-size: 1.1875rem; }
-.doc ul { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
+.doc :is(ul, ol) { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
+.doc ol li::marker { color: var(--green); font-weight: 650; }
+.doc b { color: var(--ink); font-weight: 620; }
 .doc dl { margin: 0; }
 .doc dl div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .doc dt { font-weight: 600; }
 .doc dd { margin: 0; }
+
+/* organizatori.html: scrisoarea către organizatori, cu butonul ei */
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin: 28px 0 0; }
+.cta {
+  display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px;
+  border-radius: 999px; background: var(--green); color: #0B0E0C;
+  font-weight: 650; letter-spacing: -.012em; text-decoration: none;
+}
+.cta:hover { color: #0B0E0C; }
+.name { white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .cta { transition: scale .15s ease-out; }
+  .cta:active { scale: .96; }
+}
 
 @media (max-width: 560px) {
   .doc dl div { grid-template-columns: minmax(0, 1fr); gap: 2px; }

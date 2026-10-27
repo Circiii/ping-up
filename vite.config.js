@@ -135,6 +135,7 @@ export default defineConfig(async ({ command }) => {
         input: {
           main: resolve(site, 'index.html'),
           confidentialitate: resolve(site, 'confidentialitate.html'),
+          organizatori: resolve(site, 'organizatori.html'),
           404: resolve(site, '404.html'),
         },
         output: { postBanner: '/*! Licentele bibliotecilor incluse: licente.txt */' },
